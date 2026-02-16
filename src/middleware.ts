@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { publicUrl } from '@/lib/url';
 
 const COOKIE_NAME = 'stytch_session_token';
 
@@ -54,7 +55,7 @@ export function middleware(request: NextRequest) {
     }
 
     // Page routes redirect to login
-    return NextResponse.redirect(new URL('/admin/login', request.url));
+    return NextResponse.redirect(publicUrl('/admin/login', request));
   }
 
   // Cookie exists — let the request through.

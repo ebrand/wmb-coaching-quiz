@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStytchClient } from '@/lib/stytch/server';
+import { publicUrl } from '@/lib/url';
 
 const COOKIE_NAME = 'stytch_session_token';
 const ADMIN_ROLE = process.env.STYTCH_ADMIN_ROLE || 'quiz_admin';
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
   if (!token || tokenType !== 'oauth') {
     return NextResponse.redirect(
-      new URL('/admin/login?error=auth_failed', request.url)
+      publicUrl('/admin/login?error=auth_failed', request)
     );
   }
 
@@ -38,12 +39,12 @@ export async function GET(request: NextRequest) {
         }
       }
       return NextResponse.redirect(
-        new URL('/admin/login?error=unauthorized', request.url)
+        publicUrl('/admin/login?error=unauthorized', request)
       );
     }
 
     // Set session cookie and redirect to admin
-    const response = NextResponse.redirect(new URL('/admin', request.url));
+    const response = NextResponse.redirect(publicUrl('/admin', request));
     response.cookies.set(COOKIE_NAME, authResponse.session_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Admin OAuth callback error:', error);
     return NextResponse.redirect(
-      new URL('/admin/login?error=auth_failed', request.url)
+      publicUrl('/admin/login?error=auth_failed', request)
     );
   }
 }
