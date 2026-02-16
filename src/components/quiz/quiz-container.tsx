@@ -212,6 +212,13 @@ function IntroScreen({ quiz, onStart, loading, buttonStyle, primaryColor }: Intr
       {quiz.description && (
         <p className="text-muted-foreground">{quiz.description}</p>
       )}
+      {quiz.image_url && (
+        <img
+          src={quiz.image_url}
+          alt=""
+          className="w-full max-w-md mx-auto rounded-lg"
+        />
+      )}
       <p className="text-sm text-muted-foreground">
         {quiz.questions.length} questions
       </p>
@@ -267,6 +274,14 @@ function QuestionScreen({
       </div>
 
       <h2 className="text-xl font-medium">{question.question_text}</h2>
+
+      {question.image_url && (
+        <img
+          src={question.image_url}
+          alt=""
+          className="w-full max-w-md mx-auto rounded-lg"
+        />
+      )}
 
       <div className="space-y-3">
         {question.answers.map((answer) => (

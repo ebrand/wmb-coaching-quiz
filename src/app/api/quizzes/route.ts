@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     .insert({
       title: body.title,
       description: body.description,
+      image_url: body.image_url || null,
       slug,
       settings: body.settings || {
         primaryColor: '#3b82f6',

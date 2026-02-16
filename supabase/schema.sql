@@ -9,6 +9,7 @@ CREATE TABLE quizzes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
   description TEXT,
+  image_url TEXT,
   slug TEXT UNIQUE NOT NULL,
   is_published BOOLEAN DEFAULT FALSE,
   settings JSONB DEFAULT '{
@@ -40,6 +41,7 @@ CREATE TABLE questions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   quiz_id UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
   question_text TEXT NOT NULL,
+  image_url TEXT,
   display_order INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

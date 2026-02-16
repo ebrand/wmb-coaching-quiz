@@ -9,6 +9,7 @@ export interface Quiz {
   id: string;
   title: string;
   description: string | null;
+  image_url: string | null;
   slug: string;
   is_published: boolean;
   settings: QuizSettings;
@@ -33,6 +34,7 @@ export interface Question {
   id: string;
   quiz_id: string;
   question_text: string;
+  image_url: string | null;
   display_order: number;
   created_at: string;
 }
@@ -131,7 +133,7 @@ export interface AnalyticsData {
 }
 
 // Form types for creating/updating
-export type CreateQuiz = Pick<Quiz, 'title' | 'description' | 'slug'> & {
+export type CreateQuiz = Pick<Quiz, 'title' | 'description' | 'image_url' | 'slug'> & {
   settings?: Partial<QuizSettings>;
 };
 

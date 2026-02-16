@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Upload, X, Loader2 } from 'lucide-react';
 import { EmbedCodeGenerator } from '@/components/admin/embed-code-generator';
 import type { Quiz, QuizSettings } from '@/types/database';
 
@@ -20,13 +20,51 @@ interface QuizSettingsFormProps {
 export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     title: quiz.title,
     description: quiz.description || '',
+    image_url: quiz.image_url || '',
     slug: quiz.slug,
     is_published: quiz.is_published,
     settings: quiz.settings as QuizSettings,
   });
+
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: fd,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Upload failed');
+        return;
+      }
+
+      const { url } = await response.json();
+      setFormData((prev) => ({ ...prev, image_url: url }));
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+    e.target.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,11 +74,15 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
       const response = await fetch(`/api/quizzes/${quiz.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          image_url: formData.image_url || null,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update quiz');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update quiz');
       }
 
       router.refresh();
@@ -122,7 +164,42 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
               />
             </div>
 
-            <Button type="submit" disabled={loading}>
+            <div className="space-y-2">
+              <Label>Quiz Image (optional)</Label>
+              {formData.image_url ? (
+                <div className="relative inline-block">
+                  <img src={formData.image_url} alt="" className="max-h-40 rounded-lg border" />
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, image_url: '' }))}
+                    className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploading ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
+                    ) : (
+                      <><Upload className="w-4 h-4 mr-2" />Upload Image</>
+                    )}
+                  </Button>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Displayed on the quiz intro screen
+              </p>
+            </div>
+
+            <Button type="submit" disabled={loading || uploading}>
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </form>
@@ -277,6 +354,14 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
           <EmbedCodeGenerator slug={quiz.slug} />
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        onChange={onFileSelect}
+        className="hidden"
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronUp, Upload, X, Loader2, ImageIcon } from 'lucide-react';
 import { AnswerResultWiring } from './answer-result-wiring';
 import type { QuizResult, Question, Answer, AnswerResultWeight } from '@/types/database';
 
@@ -34,7 +34,44 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const [questionForm, setQuestionForm] = useState({ question_text: '' });
+  const [questionForm, setQuestionForm] = useState({ question_text: '', image_url: '' });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Upload failed');
+        return;
+      }
+
+      const { url } = await response.json();
+      setQuestionForm((prev) => ({ ...prev, image_url: url }));
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+    e.target.value = '';
+  };
 
   const toggleQuestion = (questionId: string) => {
     const newExpanded = new Set(expandedQuestions);
@@ -57,13 +94,14 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
         body: JSON.stringify({
           quiz_id: quizId,
           question_text: questionForm.question_text,
+          image_url: questionForm.image_url || null,
           display_order: questions.length,
         }),
       });
 
       if (!response.ok) throw new Error('Failed to create question');
 
-      setQuestionForm({ question_text: '' });
+      setQuestionForm({ question_text: '', image_url: '' });
       setIsCreatingQuestion(false);
       router.refresh();
     } catch (error) {
@@ -83,17 +121,23 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
       const response = await fetch(`/api/questions/${editingQuestion.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question_text: questionForm.question_text }),
+        body: JSON.stringify({
+          question_text: questionForm.question_text,
+          image_url: questionForm.image_url || null,
+        }),
       });
 
-      if (!response.ok) throw new Error('Failed to update question');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to update question');
+      }
 
       setEditingQuestion(null);
-      setQuestionForm({ question_text: '' });
+      setQuestionForm({ question_text: '', image_url: '' });
       router.refresh();
     } catch (error) {
       console.error('Error updating question:', error);
-      alert('Failed to update question');
+      alert(error instanceof Error ? error.message : 'Failed to update question');
     } finally {
       setLoading(false);
     }
@@ -149,13 +193,44 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                 <Label>Question Text</Label>
                 <Input
                   value={questionForm.question_text}
-                  onChange={(e) => setQuestionForm({ question_text: e.target.value })}
+                  onChange={(e) => setQuestionForm((prev) => ({ ...prev, question_text: e.target.value }))}
                   placeholder="Enter your question..."
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label>Image (optional)</Label>
+                {questionForm.image_url ? (
+                  <div className="relative inline-block">
+                    <img src={questionForm.image_url} alt="" className="max-h-40 rounded-lg border" />
+                    <button
+                      type="button"
+                      onClick={() => setQuestionForm((prev) => ({ ...prev, image_url: '' }))}
+                      className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {uploading ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
+                      ) : (
+                        <><Upload className="w-4 h-4 mr-2" />Upload Image</>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
               <div className="flex gap-2">
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading || uploading}>
                   {loading ? 'Creating...' : 'Create Question'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setIsCreatingQuestion(false)}>
@@ -190,6 +265,9 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                     )}
                     <span className="text-muted-foreground">Q{qIndex + 1}.</span>
                     <span className="font-medium">{question.question_text}</span>
+                    {question.image_url && (
+                      <ImageIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    )}
                   </button>
                   <div className="flex gap-1">
                     <Dialog
@@ -197,7 +275,7 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                       onOpenChange={(open) => {
                         if (!open) {
                           setEditingQuestion(null);
-                          setQuestionForm({ question_text: '' });
+                          setQuestionForm({ question_text: '', image_url: '' });
                         }
                       }}
                     >
@@ -207,7 +285,7 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                           size="sm"
                           onClick={() => {
                             setEditingQuestion(question);
-                            setQuestionForm({ question_text: question.question_text });
+                            setQuestionForm({ question_text: question.question_text, image_url: question.image_url || '' });
                           }}
                         >
                           <Edit className="w-4 h-4" />
@@ -222,18 +300,49 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                             <Label>Question Text</Label>
                             <Input
                               value={questionForm.question_text}
-                              onChange={(e) => setQuestionForm({ question_text: e.target.value })}
+                              onChange={(e) => setQuestionForm((prev) => ({ ...prev, question_text: e.target.value }))}
                               required
                             />
                           </div>
+                          <div className="space-y-2">
+                            <Label>Image (optional)</Label>
+                            {questionForm.image_url ? (
+                              <div className="relative inline-block">
+                                <img src={questionForm.image_url} alt="" className="max-h-40 rounded-lg border" />
+                                <button
+                                  type="button"
+                                  onClick={() => setQuestionForm((prev) => ({ ...prev, image_url: '' }))}
+                                  className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={uploading}
+                                  onClick={() => fileInputRef.current?.click()}
+                                >
+                                  {uploading ? (
+                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
+                                  ) : (
+                                    <><Upload className="w-4 h-4 mr-2" />Upload Image</>
+                                  )}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                           <div className="flex gap-2">
-                            <Button type="submit" disabled={loading}>Save</Button>
+                            <Button type="submit" disabled={loading || uploading}>Save</Button>
                             <Button
                               type="button"
                               variant="outline"
                               onClick={() => {
                                 setEditingQuestion(null);
-                                setQuestionForm({ question_text: '' });
+                                setQuestionForm({ question_text: '', image_url: '' });
                               }}
                             >
                               Cancel
@@ -267,6 +376,14 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
           ))}
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        onChange={onFileSelect}
+        className="hidden"
+      />
     </div>
   );
 }

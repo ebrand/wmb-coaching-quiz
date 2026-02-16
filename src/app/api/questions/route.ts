@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
     .insert({
       quiz_id: body.quiz_id,
       question_text: body.question_text,
+      image_url: body.image_url || null,
       display_order: body.display_order || 0,
     })
     .select()
