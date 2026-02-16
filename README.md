@@ -1,4 +1,4 @@
-# WMB Coaching Quiz Platform
+# Culture Coach Wendy - Quiz Platform
 
 A full-stack quiz platform for creating, managing, and distributing branded personality/assessment quizzes. Built with Next.js 16, Supabase, Stytch OAuth, and Resend.
 
