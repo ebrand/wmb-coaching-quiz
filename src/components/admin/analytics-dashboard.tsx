@@ -15,7 +15,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from 'recharts';
 import type { AnalyticsData } from '@/types/database';
 
@@ -24,6 +23,9 @@ interface AnalyticsDashboardProps {
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+
+const truncateLabel = (text: string, maxLen = 15) =>
+  text.length > maxLen ? text.slice(0, maxLen).trimEnd() + '…' : text;
 
 export function AnalyticsDashboard({ quizId }: AnalyticsDashboardProps) {
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -172,7 +174,7 @@ export function AnalyticsDashboard({ quizId }: AnalyticsDashboardProps) {
                       cy="50%"
                       labelLine={false}
                       label={({ name, percent }) =>
-                        `${name} (${((percent || 0) * 100).toFixed(0)}%)`
+                        `${truncateLabel(name ?? '')} (${((percent || 0) * 100).toFixed(0)}%)`
                       }
                       outerRadius={100}
                       fill="#8884d8"
@@ -187,7 +189,6 @@ export function AnalyticsDashboard({ quizId }: AnalyticsDashboardProps) {
                       ))}
                     </Pie>
                     <Tooltip />
-                    <Legend />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
