@@ -15,7 +15,7 @@ export default async function AdminDashboardLayout({
       {/* Sidebar */}
       <aside className="w-64 bg-neutral-900 text-white flex flex-col">
         <div className="p-4 border-b border-neutral-800">
-          <h1 className="text-xl font-bold">Culture Coach Wendy<br/>Quiz Admin</h1>
+          <h1 className="text-xl font-bold">Culture Coach Wendy</h1>
         </div>
         <nav className="p-4 flex-1">
           <ul className="space-y-2">
@@ -34,7 +34,7 @@ export default async function AdminDashboardLayout({
                 className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-neutral-800 transition-colors"
               >
                 <FileQuestion className="w-5 h-5" />
-                Culture Coach Wendy - Quiz Manager
+                Quizzes
               </Link>
             </li>
             <li>
