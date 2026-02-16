@@ -1,27 +1,25 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const [oauthUrl, setOauthUrl] = useState<string | null>(null);
 
-  const publicToken = process.env.NEXT_PUBLIC_STYTCH_PUBLIC_TOKEN;
+  useEffect(() => {
+    const publicToken = process.env.NEXT_PUBLIC_STYTCH_PUBLIC_TOKEN;
+    const callbackUrl = `${window.location.origin}/api/admin/auth/callback`;
+    const isTestEnv = publicToken?.includes('-test-');
+    const stytchBaseUrl = isTestEnv
+      ? 'https://test.stytch.com'
+      : 'https://api.stytch.com';
 
-  // Use window.location.origin so the callback always points to the current
-  // host — avoids NEXT_PUBLIC_APP_URL being baked to localhost at build time.
-  const callbackUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/api/admin/auth/callback`
-      : '';
-
-  const isTestEnv = publicToken?.includes('-test-');
-  const stytchBaseUrl = isTestEnv
-    ? 'https://test.stytch.com'
-    : 'https://api.stytch.com';
-
-  const oauthUrl = `${stytchBaseUrl}/v1/public/oauth/google/start?public_token=${publicToken}&login_redirect_url=${encodeURIComponent(callbackUrl)}&signup_redirect_url=${encodeURIComponent(callbackUrl)}`;
+    setOauthUrl(
+      `${stytchBaseUrl}/v1/public/oauth/google/start?public_token=${publicToken}&login_redirect_url=${encodeURIComponent(callbackUrl)}&signup_redirect_url=${encodeURIComponent(callbackUrl)}`
+    );
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50">
@@ -47,7 +45,8 @@ function LoginContent() {
         )}
 
         <a
-          href={oauthUrl}
+          href={oauthUrl || '#'}
+          aria-disabled={!oauthUrl}
           className="flex items-center justify-center gap-3 w-full px-4 py-2.5 bg-white border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
