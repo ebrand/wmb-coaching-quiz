@@ -12,7 +12,7 @@ const ADMIN_ROLE = process.env.STYTCH_ADMIN_ROLE || 'quiz_admin';
  * "https://stytch.com/session" rather than populating session.roles on the
  * REST response.
  */
-function getRolesFromJwt(jwt: string): string[] {
+export function getRolesFromJwt(jwt: string): string[] {
   try {
     const payload = JSON.parse(
       Buffer.from(jwt.split('.')[1], 'base64url').toString()

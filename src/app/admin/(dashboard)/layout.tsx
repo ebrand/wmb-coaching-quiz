@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LayoutDashboard, FileQuestion, Users } from 'lucide-react';
+import { LayoutDashboard, FileQuestion, Users, UserCircle } from 'lucide-react';
 import { requireAdminPage } from '@/lib/auth/admin-page';
 import { LogoutButton } from '@/components/admin/logout-button';
 
@@ -44,6 +44,15 @@ export default async function AdminDashboardLayout({
               >
                 <Users className="w-5 h-5" />
                 Leads
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/account"
+                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-neutral-800 transition-colors"
+              >
+                <UserCircle className="w-5 h-5" />
+                Account
               </Link>
             </li>
           </ul>
