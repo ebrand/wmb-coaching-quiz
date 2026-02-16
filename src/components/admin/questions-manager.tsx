@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, ChevronDown, ChevronUp, Upload, X, Loader2, ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronDown, ChevronUp, Upload, X, Loader2, ImageIcon, GripVertical } from 'lucide-react';
 import { AnswerResultWiring } from './answer-result-wiring';
 import type { QuizResult, Question, Answer, AnswerResultWeight } from '@/types/database';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface QuestionWithAnswers extends Question {
   answers: (Answer & { answer_result_weights: AnswerResultWeight[] })[];
@@ -27,8 +44,95 @@ interface QuestionsManagerProps {
   results: QuizResult[];
 }
 
+// Sortable question card sub-component
+function SortableQuestionCard({
+  question,
+  qIndex,
+  isExpanded,
+  onToggle,
+  onEdit,
+  onDelete,
+  editDialog,
+  children,
+}: {
+  question: QuestionWithAnswers;
+  qIndex: number;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  editDialog: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: question.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style}>
+      <CardHeader className="py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 flex-1">
+            <button
+              className="cursor-grab active:cursor-grabbing touch-none p-1 text-muted-foreground hover:text-foreground"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="w-4 h-4" />
+            </button>
+            <button
+              className="flex items-center gap-2 text-left flex-1"
+              onClick={onToggle}
+            >
+              {isExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+              <span className="text-muted-foreground">Q{qIndex + 1}.</span>
+              <span className="font-medium">{question.question_text}</span>
+              {question.image_url && (
+                <ImageIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              )}
+            </button>
+          </div>
+          <div className="flex gap-1">
+            {editDialog}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      {isExpanded && (
+        <CardContent className="border-t pt-4">
+          {children}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 export function QuestionsManager({ quizId, questions, results }: QuestionsManagerProps) {
   const router = useRouter();
+  const [orderedQuestions, setOrderedQuestions] = useState<QuestionWithAnswers[]>(questions);
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [isCreatingQuestion, setIsCreatingQuestion] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
@@ -37,6 +141,48 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
   const [questionForm, setQuestionForm] = useState({ question_text: '', image_url: '' });
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync orderedQuestions from props when they change (e.g. after router.refresh)
+  useEffect(() => {
+    setOrderedQuestions(questions);
+  }, [questions]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleQuestionDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = orderedQuestions.findIndex((q) => q.id === active.id);
+    const newIndex = orderedQuestions.findIndex((q) => q.id === over.id);
+    const reordered = arrayMove(orderedQuestions, oldIndex, newIndex);
+
+    // Optimistic update
+    setOrderedQuestions(reordered);
+
+    try {
+      const response = await fetch('/api/questions/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds: reordered.map((q) => q.id) }),
+      });
+
+      if (!response.ok) throw new Error('Failed to reorder questions');
+      router.refresh();
+    } catch (error) {
+      console.error('Error reordering questions:', error);
+      // Revert on failure
+      setOrderedQuestions(questions);
+      alert('Failed to reorder questions');
+    }
+  };
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
@@ -95,7 +241,7 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
           quiz_id: quizId,
           question_text: questionForm.question_text,
           image_url: questionForm.image_url || null,
-          display_order: questions.length,
+          display_order: orderedQuestions.length,
         }),
       });
 
@@ -242,34 +388,36 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
         </Dialog>
       </div>
 
-      {questions.length === 0 ? (
+      {orderedQuestions.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             <p>No questions yet. Click &quot;Add Question&quot; to get started.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {questions.map((question, qIndex) => (
-            <Card key={question.id}>
-              <CardHeader className="py-3">
-                <div className="flex items-center justify-between">
-                  <button
-                    className="flex items-center gap-2 text-left flex-1"
-                    onClick={() => toggleQuestion(question.id)}
-                  >
-                    {expandedQuestions.has(question.id) ? (
-                      <ChevronUp className="w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4" />
-                    )}
-                    <span className="text-muted-foreground">Q{qIndex + 1}.</span>
-                    <span className="font-medium">{question.question_text}</span>
-                    {question.image_url && (
-                      <ImageIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                    )}
-                  </button>
-                  <div className="flex gap-1">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleQuestionDragEnd}
+        >
+          <SortableContext
+            items={orderedQuestions.map((q) => q.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-4">
+              {orderedQuestions.map((question, qIndex) => (
+                <SortableQuestionCard
+                  key={question.id}
+                  question={question}
+                  qIndex={qIndex}
+                  isExpanded={expandedQuestions.has(question.id)}
+                  onToggle={() => toggleQuestion(question.id)}
+                  onEdit={() => {
+                    setEditingQuestion(question);
+                    setQuestionForm({ question_text: question.question_text, image_url: question.image_url || '' });
+                  }}
+                  onDelete={() => handleDeleteQuestion(question.id)}
+                  editDialog={
                     <Dialog
                       open={editingQuestion?.id === question.id}
                       onOpenChange={(open) => {
@@ -351,30 +499,18 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                         </form>
                       </DialogContent>
                     </Dialog>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteQuestion(question.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-
-              {expandedQuestions.has(question.id) && (
-                <CardContent className="border-t pt-4">
+                  }
+                >
                   <AnswersManager
                     questionId={question.id}
                     answers={question.answers || []}
                     results={results}
                   />
-                </CardContent>
-              )}
-            </Card>
-          ))}
-        </div>
+                </SortableQuestionCard>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       <input
@@ -445,6 +581,22 @@ function AnswersManager({ questionId, answers, results }: AnswersManagerProps) {
     }
   };
 
+  const handleReorderAnswers = async (orderedIds: string[]) => {
+    try {
+      const response = await fetch('/api/answers/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderedIds }),
+      });
+
+      if (!response.ok) throw new Error('Failed to reorder answers');
+      router.refresh();
+    } catch (error) {
+      console.error('Error reordering answers:', error);
+      alert('Failed to reorder answers');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -492,6 +644,7 @@ function AnswersManager({ questionId, answers, results }: AnswersManagerProps) {
           answers={answers}
           results={results}
           onDeleteAnswer={handleDeleteAnswer}
+          onReorderAnswers={handleReorderAnswers}
         />
       )}
 
@@ -503,4 +656,3 @@ function AnswersManager({ questionId, answers, results }: AnswersManagerProps) {
     </div>
   );
 }
-

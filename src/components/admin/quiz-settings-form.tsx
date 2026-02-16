@@ -290,6 +290,30 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="answerOrder">Answer Order</Label>
+              <Select
+                value={formData.settings.randomizeAnswers ? 'random' : 'set'}
+                onValueChange={(value: string) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    settings: { ...prev.settings, randomizeAnswers: value === 'random' },
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="set">Show in set order</SelectItem>
+                  <SelectItem value="random">Randomize answer order</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                Randomize shuffles answer choices for each quiz taker
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="logoUrl">Logo URL (optional)</Label>
               <Input
                 id="logoUrl"

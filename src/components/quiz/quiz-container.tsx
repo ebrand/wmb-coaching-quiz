@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -36,7 +36,17 @@ export function QuizContainer({ quiz }: QuizContainerProps) {
   const [loading, setLoading] = useState(false);
 
   const settings = quiz.settings as QuizSettings;
-  const questions = quiz.questions;
+
+  // Shuffle answers per question if randomizeAnswers is enabled (stable for the session)
+  const questions = useMemo(() => {
+    if (!settings.randomizeAnswers) return quiz.questions;
+    return quiz.questions.map((q) => ({
+      ...q,
+      answers: [...q.answers].sort(() => Math.random() - 0.5),
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quiz.questions]);
+
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 

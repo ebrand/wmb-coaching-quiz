@@ -3,13 +3,31 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Trash2, X } from 'lucide-react';
+import { Trash2, X, GripVertical } from 'lucide-react';
 import type { Answer, AnswerResultWeight, QuizResult } from '@/types/database';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface AnswerResultWiringProps {
   answers: (Answer & { answer_result_weights: AnswerResultWeight[] })[];
   results: QuizResult[];
   onDeleteAnswer: (answerId: string) => void;
+  onReorderAnswers: (orderedIds: string[]) => Promise<void>;
 }
 
 const CHART_COLORS = [
@@ -33,16 +51,132 @@ interface AnchorPoint {
   y: number;
 }
 
-export function AnswerResultWiring({ answers, results, onDeleteAnswer }: AnswerResultWiringProps) {
+// Sortable answer row sub-component
+function SortableAnswerRow({
+  answer,
+  mappedColor,
+  isSelected,
+  isDraggingWire,
+  loading,
+  weight,
+  onPointerDown,
+  onClick,
+  onRemoveMapping,
+  onDeleteAnswer,
+  setRef,
+}: {
+  answer: Answer & { answer_result_weights: AnswerResultWeight[] };
+  mappedColor: string | undefined;
+  isSelected: boolean;
+  isDraggingWire: boolean;
+  loading: boolean;
+  weight: AnswerResultWeight | undefined;
+  onPointerDown: (e: React.PointerEvent) => void;
+  onClick: () => void;
+  onRemoveMapping: () => void;
+  onDeleteAnswer: () => void;
+  setRef: (el: HTMLDivElement | null) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: answer.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={(el) => {
+        setNodeRef(el);
+        setRef(el);
+      }}
+      style={style}
+      className={`border rounded-lg p-2.5 pr-2 bg-white flex items-center gap-2 transition-shadow ${
+        isSelected
+          ? 'ring-2 ring-primary shadow-md'
+          : isDraggingWire
+            ? 'ring-2 ring-primary/50 shadow-sm'
+            : 'hover:shadow-sm'
+      }`}
+    >
+      {/* Drag handle for reordering */}
+      <button
+        className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-muted-foreground hover:text-foreground shrink-0"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-3.5 h-3.5" />
+      </button>
+      {/* Wiring drag area: color dot + text + buttons */}
+      <div
+        className="flex items-center gap-2 flex-1 min-w-0"
+        style={{ cursor: loading ? 'wait' : 'grab' }}
+        onPointerDown={onPointerDown}
+        onClick={onClick}
+      >
+        <div
+          className="w-2.5 h-2.5 rounded-full shrink-0"
+          style={{
+            backgroundColor: mappedColor || 'var(--muted)',
+            opacity: mappedColor ? 1 : 0.4,
+          }}
+        />
+        <span className="flex-1 text-sm font-medium truncate">{truncateText(answer.answer_text)}</span>
+      </div>
+      <div className="flex items-center gap-0.5 shrink-0">
+        {weight && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemoveMapping();
+            }}
+          >
+            <X className="w-3 h-3" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDeleteAnswer();
+          }}
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function AnswerResultWiring({ answers, results, onDeleteAnswer, onReorderAnswers }: AnswerResultWiringProps) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const answerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const resultRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+  const [orderedAnswers, setOrderedAnswers] = useState(answers);
   const [, forceUpdate] = useState(0);
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ answerId: string; cursorPos: AnchorPoint } | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Sync orderedAnswers from props
+  useEffect(() => {
+    setOrderedAnswers(answers);
+  }, [answers]);
 
   // Force re-render when layout changes so SVG lines reposition
   useEffect(() => {
@@ -60,7 +194,39 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer }: AnswerR
   // Also recalculate on answer/result changes
   useEffect(() => {
     forceUpdate((n) => n + 1);
-  }, [answers, results]);
+  }, [orderedAnswers, results]);
+
+  // dnd-kit sensors for answer reordering
+  const reorderSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleAnswerDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = orderedAnswers.findIndex((a) => a.id === active.id);
+    const newIndex = orderedAnswers.findIndex((a) => a.id === over.id);
+    const reordered = arrayMove(orderedAnswers, oldIndex, newIndex);
+
+    // Optimistic update
+    setOrderedAnswers(reordered);
+    // Trigger SVG line recalculation
+    forceUpdate((n) => n + 1);
+
+    try {
+      await onReorderAnswers(reordered.map((a) => a.id));
+    } catch {
+      // Revert on failure
+      setOrderedAnswers(answers);
+      forceUpdate((n) => n + 1);
+    }
+  };
 
   const getAnchorPoint = useCallback(
     (element: HTMLDivElement | undefined, side: 'right' | 'left'): AnchorPoint | null => {
@@ -79,7 +245,7 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer }: AnswerR
     setLoading(true);
     try {
       // Find existing mapping for this answer
-      const answer = answers.find((a) => a.id === answerId);
+      const answer = orderedAnswers.find((a) => a.id === answerId);
       const existingWeight = answer?.answer_result_weights[0];
 
       // Remove old mapping if it exists and points to a different result
@@ -131,7 +297,7 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer }: AnswerR
     }
   };
 
-  // Pointer handlers for drag interaction
+  // Pointer handlers for wiring drag interaction
   const handleAnswerPointerDown = (answerId: string, e: React.PointerEvent) => {
     // Only left click
     if (e.button !== 0) return;
@@ -233,7 +399,7 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer }: AnswerR
     color: string;
   }[] = [];
 
-  for (const answer of answers) {
+  for (const answer of orderedAnswers) {
     const weight = answer.answer_result_weights[0];
     if (!weight) continue;
 
@@ -267,7 +433,7 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer }: AnswerR
   const resultColorMap = new Map<string, string>();
   results.forEach((r, i) => resultColorMap.set(r.id, getResultColor(i)));
 
-  if (answers.length === 0) {
+  if (orderedAnswers.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
         No answers yet. Add answers for this question.
@@ -331,70 +497,45 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer }: AnswerR
 
       {/* Two-column layout */}
       <div className="grid grid-cols-[1fr_1fr] gap-16" style={{ position: 'relative', zIndex: 2 }}>
-        {/* Left column: Answers */}
+        {/* Left column: Answers (sortable) */}
         <div className="space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Answers
           </h4>
-          {answers.map((answer) => {
-            const weight = answer.answer_result_weights[0];
-            const isSelected = selectedAnswerId === answer.id;
-            const isDraggingThis = dragging?.answerId === answer.id;
-            const mappedColor = weight ? resultColorMap.get(weight.result_id) : undefined;
+          <DndContext
+            sensors={reorderSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleAnswerDragEnd}
+          >
+            <SortableContext
+              items={orderedAnswers.map((a) => a.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {orderedAnswers.map((answer) => {
+                const weight = answer.answer_result_weights[0];
+                const isSelected = selectedAnswerId === answer.id;
+                const isDraggingWire = dragging?.answerId === answer.id;
+                const mappedColor = weight ? resultColorMap.get(weight.result_id) : undefined;
 
-            return (
-              <div
-                key={answer.id}
-                ref={setAnswerRef(answer.id)}
-                className={`border rounded-lg p-2.5 pr-2 bg-white flex items-center gap-2 transition-shadow ${
-                  isSelected
-                    ? 'ring-2 ring-primary shadow-md'
-                    : isDraggingThis
-                      ? 'ring-2 ring-primary/50 shadow-sm'
-                      : 'hover:shadow-sm'
-                }`}
-                style={{ cursor: loading ? 'wait' : 'grab' }}
-                onPointerDown={(e) => handleAnswerPointerDown(answer.id, e)}
-                onClick={() => handleAnswerClick(answer.id)}
-              >
-                {/* Color dot indicator for mapped answers */}
-                <div
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: mappedColor || 'var(--muted)',
-                    opacity: mappedColor ? 1 : 0.4,
-                  }}
-                />
-                <span className="flex-1 text-sm font-medium">{truncateText(answer.answer_text)}</span>
-                <div className="flex items-center gap-0.5 shrink-0">
-                  {weight && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveMapping(answer.id, weight.result_id);
-                      }}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteAnswer(answer.id);
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+                return (
+                  <SortableAnswerRow
+                    key={answer.id}
+                    answer={answer}
+                    mappedColor={mappedColor}
+                    isSelected={isSelected}
+                    isDraggingWire={isDraggingWire}
+                    loading={loading}
+                    weight={weight}
+                    onPointerDown={(e) => handleAnswerPointerDown(answer.id, e)}
+                    onClick={() => handleAnswerClick(answer.id)}
+                    onRemoveMapping={() => weight && handleRemoveMapping(answer.id, weight.result_id)}
+                    onDeleteAnswer={() => onDeleteAnswer(answer.id)}
+                    setRef={setAnswerRef(answer.id)}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
         </div>
 
         {/* Right column: Results */}
@@ -405,7 +546,7 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer }: AnswerR
           {results.map((result, index) => {
             const color = getResultColor(index);
             // Count how many answers map to this result
-            const mappedCount = answers.filter((a) =>
+            const mappedCount = orderedAnswers.filter((a) =>
               a.answer_result_weights.some((w) => w.result_id === result.id)
             ).length;
 

@@ -3,6 +3,7 @@ export interface QuizSettings {
   backgroundColor: string;
   buttonStyle: 'rounded' | 'square';
   logoUrl: string | null;
+  randomizeAnswers?: boolean;
 }
 
 export interface Quiz {
