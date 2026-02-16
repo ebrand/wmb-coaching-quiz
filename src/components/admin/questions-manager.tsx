@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Slider } from '@/components/ui/slider';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -15,14 +13,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Plus, Edit, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { AnswerResultWiring } from './answer-result-wiring';
 import type { QuizResult, Question, Answer, AnswerResultWeight } from '@/types/database';
 
 interface QuestionWithAnswers extends Question {
@@ -290,19 +282,13 @@ function AnswersManager({ questionId, answers, results }: AnswersManagerProps) {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [newAnswerText, setNewAnswerText] = useState('');
-  const [newAnswerResultId, setNewAnswerResultId] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCreateAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAnswerResultId) {
-      alert('Please select which result this answer maps to');
-      return;
-    }
     setLoading(true);
 
     try {
-      // Create the answer
       const answerResponse = await fetch('/api/answers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -315,21 +301,7 @@ function AnswersManager({ questionId, answers, results }: AnswersManagerProps) {
 
       if (!answerResponse.ok) throw new Error('Failed to create answer');
 
-      const newAnswer = await answerResponse.json();
-
-      // Create the result association
-      await fetch('/api/answer-weights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answer_id: newAnswer.id,
-          result_id: newAnswerResultId,
-          weight: 1,
-        }),
-      });
-
       setNewAnswerText('');
-      setNewAnswerResultId('');
       setIsCreating(false);
       router.refresh();
     } catch (error) {
@@ -379,23 +351,8 @@ function AnswersManager({ questionId, answers, results }: AnswersManagerProps) {
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label className="text-sm">Maps to Result</Label>
-            <Select value={newAnswerResultId} onValueChange={setNewAnswerResultId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a result..." />
-              </SelectTrigger>
-              <SelectContent>
-                {results.map((result) => (
-                  <SelectItem key={result.id} value={result.id}>
-                    {result.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={loading || !newAnswerResultId}>
+            <Button type="submit" size="sm" disabled={loading}>
               {loading ? 'Adding...' : 'Add Answer'}
             </Button>
             <Button
@@ -405,7 +362,6 @@ function AnswersManager({ questionId, answers, results }: AnswersManagerProps) {
               onClick={() => {
                 setIsCreating(false);
                 setNewAnswerText('');
-                setNewAnswerResultId('');
               }}
             >
               Cancel
@@ -414,98 +370,20 @@ function AnswersManager({ questionId, answers, results }: AnswersManagerProps) {
         </form>
       )}
 
-      {answers.length === 0 && !isCreating ? (
+      {answers.length > 0 && (
+        <AnswerResultWiring
+          answers={answers}
+          results={results}
+          onDeleteAnswer={handleDeleteAnswer}
+        />
+      )}
+
+      {answers.length === 0 && !isCreating && (
         <p className="text-sm text-muted-foreground text-center py-4">
           No answers yet. Add answers for this question.
         </p>
-      ) : (
-        <div className="space-y-2">
-          {answers.map((answer) => (
-            <AnswerRow
-              key={answer.id}
-              answer={answer}
-              results={results}
-              onDelete={() => handleDeleteAnswer(answer.id)}
-            />
-          ))}
-        </div>
       )}
     </div>
   );
 }
 
-// Single Answer Row with result mapping
-interface AnswerRowProps {
-  answer: Answer & { answer_result_weights: AnswerResultWeight[] };
-  results: QuizResult[];
-  onDelete: () => void;
-}
-
-function AnswerRow({ answer, results, onDelete }: AnswerRowProps) {
-  const router = useRouter();
-  const currentWeight = answer.answer_result_weights[0];
-  const [selectedResultId, setSelectedResultId] = useState(currentWeight?.result_id || '');
-  const [loading, setLoading] = useState(false);
-
-  const selectedResult = results.find(r => r.id === selectedResultId);
-
-  const handleResultChange = async (newResultId: string) => {
-    setLoading(true);
-    const oldResultId = selectedResultId;
-    setSelectedResultId(newResultId);
-
-    try {
-      // Remove old weight if exists
-      if (currentWeight) {
-        await fetch(`/api/answer-weights?answer_id=${answer.id}&result_id=${currentWeight.result_id}`, {
-          method: 'DELETE',
-        });
-      }
-
-      // Add new weight
-      await fetch('/api/answer-weights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answer_id: answer.id,
-          result_id: newResultId,
-          weight: 1,
-        }),
-      });
-
-      router.refresh();
-    } catch (error) {
-      console.error('Error updating answer:', error);
-      setSelectedResultId(oldResultId); // Revert on error
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="border rounded-lg p-3 bg-white">
-      <div className="flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="font-medium truncate">{answer.answer_text}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={selectedResultId} onValueChange={handleResultChange} disabled={loading}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Select result..." />
-            </SelectTrigger>
-            <SelectContent>
-              {results.map((result) => (
-                <SelectItem key={result.id} value={result.id}>
-                  {result.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="ghost" size="sm" className="text-destructive" onClick={onDelete}>
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

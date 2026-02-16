@@ -10,13 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -30,10 +23,9 @@ import type { QuizResult } from '@/types/database';
 interface QuizResultsManagerProps {
   quizId: string;
   results: QuizResult[];
-  questionCount: number;
 }
 
-export function QuizResultsManager({ quizId, results, questionCount }: QuizResultsManagerProps) {
+export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps) {
   const router = useRouter();
   const [editingResult, setEditingResult] = useState<QuizResult | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -45,11 +37,10 @@ export function QuizResultsManager({ quizId, results, questionCount }: QuizResul
     image_url: '',
     email_content: '',
     is_lead: false,
-    min_score: 0,
   });
 
   const resetForm = () => {
-    setFormData({ title: '', description: '', image_url: '', email_content: '', is_lead: false, min_score: 0 });
+    setFormData({ title: '', description: '', image_url: '', email_content: '', is_lead: false });
     setEditingResult(null);
     setIsCreating(false);
   };
@@ -133,7 +124,6 @@ export function QuizResultsManager({ quizId, results, questionCount }: QuizResul
       image_url: result.image_url || '',
       email_content: result.email_content || '',
       is_lead: result.is_lead,
-      min_score: result.min_score || 0,
     });
   };
 
@@ -160,38 +150,15 @@ export function QuizResultsManager({ quizId, results, questionCount }: QuizResul
               <DialogTitle>Add New Result</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="create-result-title">Title</Label>
-                  <Input
-                    id="create-result-title"
-                    value={formData.title}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder="e.g., You're a Natural Leader"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="create-result-min-score">Min Score</Label>
-                  <Select
-                    value={formData.min_score.toString()}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, min_score: parseInt(value) }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: questionCount + 1 }, (_, i) => (
-                        <SelectItem key={i} value={i.toString()}>
-                          {i} {i === 1 ? 'point' : 'points'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Min score for this result
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-result-title">Title</Label>
+                <Input
+                  id="create-result-title"
+                  value={formData.title}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g., You're a Natural Leader"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
@@ -274,9 +241,6 @@ export function QuizResultsManager({ quizId, results, questionCount }: QuizResul
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-medium truncate">{result.title}</p>
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {result.min_score}+ pts
-                    </Badge>
                     {result.is_lead && (
                       <Badge variant="secondary" className="text-xs">
                         <Star className="w-3 h-3 mr-1 text-yellow-500" />
@@ -314,38 +278,15 @@ export function QuizResultsManager({ quizId, results, questionCount }: QuizResul
                         <DialogTitle>Edit Result</DialogTitle>
                       </DialogHeader>
                       <form onSubmit={handleUpdate} className="space-y-4">
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="col-span-2 space-y-2">
-                            <Label htmlFor="edit-result-title">Title</Label>
-                            <Input
-                              id="edit-result-title"
-                              value={formData.title}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                              placeholder="e.g., You're a Natural Leader"
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="edit-result-min-score">Min Score</Label>
-                            <Select
-                              value={formData.min_score.toString()}
-                              onValueChange={(value) => setFormData((prev) => ({ ...prev, min_score: parseInt(value) }))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Array.from({ length: questionCount + 1 }, (_, i) => (
-                                  <SelectItem key={i} value={i.toString()}>
-                                    {i} {i === 1 ? 'point' : 'points'}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground">
-                              Min score for this result
-                            </p>
-                          </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-result-title">Title</Label>
+                          <Input
+                            id="edit-result-title"
+                            value={formData.title}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                            placeholder="e.g., You're a Natural Leader"
+                            required
+                          />
                         </div>
 
                         <div className="space-y-2">

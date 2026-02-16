@@ -84,7 +84,6 @@ export default async function EditQuizPage({
           <QuizResultsManager
             quizId={quiz.id}
             results={quiz.quiz_results || []}
-            questionCount={quiz.questions?.length || 0}
           />
         </TabsContent>
 
