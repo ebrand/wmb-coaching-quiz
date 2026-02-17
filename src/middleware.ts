@@ -18,7 +18,7 @@ function isPublicRoute(pathname: string): boolean {
   }
 
   // Public pages
-  if (pathname === '/' || pathname.startsWith('/q/') || pathname === '/auth-complete' || pathname === '/auth-error') {
+  if (pathname.startsWith('/q/') || pathname === '/auth-complete' || pathname === '/auth-error') {
     return true;
   }
 
@@ -37,6 +37,19 @@ function isPublicRoute(pathname: string): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Force HTTPS in production
+  const proto = request.headers.get('x-forwarded-proto');
+  if (proto === 'http') {
+    const httpsUrl = new URL(request.url);
+    httpsUrl.protocol = 'https:';
+    return NextResponse.redirect(httpsUrl, 301);
+  }
+
+  // Redirect root to admin
+  if (pathname === '/') {
+    return NextResponse.redirect(publicUrl('/admin', request));
+  }
 
   if (isPublicRoute(pathname)) {
     return NextResponse.next();
@@ -65,14 +78,10 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/admin',
-    '/admin/:path*',
-    '/api/quizzes/:path*',
-    '/api/questions/:path*',
-    '/api/answers/:path*',
-    '/api/quiz-results/:path*',
-    '/api/answer-weights/:path*',
-    '/api/analytics/:path*',
-    '/api/upload/:path*',
+    /*
+     * Match all request paths except static files and images.
+     * This ensures the HTTPS redirect applies globally.
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
