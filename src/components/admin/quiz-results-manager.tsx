@@ -129,7 +129,7 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
         <CardTitle>Quiz Results / Outcomes</CardTitle>
         <Dialog open={isCreating} onOpenChange={(open) => {
           if (open) {

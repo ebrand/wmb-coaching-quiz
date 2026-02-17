@@ -43,7 +43,7 @@ export default async function AccountPage() {
             <CardTitle>Profile</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
               {profilePicture ? (
                 <Image
                   src={profilePicture}
@@ -57,7 +57,7 @@ export default async function AccountPage() {
                   {firstName?.[0] ?? email[0]?.toUpperCase() ?? '?'}
                 </div>
               )}
-              <div>
+              <div className="text-center sm:text-left">
                 <p className="text-lg font-semibold">{displayName}</p>
                 <p className="text-muted-foreground">{email}</p>
               </div>
@@ -70,7 +70,7 @@ export default async function AccountPage() {
             <CardTitle>Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-8 gap-y-3 text-sm">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 sm:gap-x-8 gap-y-3 text-sm">
               <dt className="text-muted-foreground">Role(s)</dt>
               <dd>{roles.length > 0 ? roles.join(', ') : '—'}</dd>
 

@@ -48,7 +48,7 @@ export function EmbedCodeGenerator({ slug }: EmbedCodeGeneratorProps) {
         <CardTitle>Embed Code</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="width">Width</Label>
             <Input

@@ -82,7 +82,7 @@ export function LeadsTableFiltered({ sessions, quizzes }: LeadsTableFilteredProp
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Quiz</label>
               <Select value={quizFilter} onValueChange={setQuizFilter}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -99,7 +99,7 @@ export function LeadsTableFiltered({ sessions, quizzes }: LeadsTableFilteredProp
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Lead Status</label>
               <Select value={leadFilter} onValueChange={setLeadFilter}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -116,7 +116,7 @@ export function LeadsTableFiltered({ sessions, quizzes }: LeadsTableFilteredProp
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="w-[160px]"
+                className="w-full sm:w-[160px]"
               />
             </div>
 
@@ -126,7 +126,7 @@ export function LeadsTableFiltered({ sessions, quizzes }: LeadsTableFilteredProp
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="w-[160px]"
+                className="w-full sm:w-[160px]"
               />
             </div>
           </div>
@@ -144,18 +144,9 @@ export function LeadsTableFiltered({ sessions, quizzes }: LeadsTableFilteredProp
         </CardHeader>
         <CardContent>
           {filtered.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Quiz</TableHead>
-                  <TableHead>Result</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Lead</TableHead>
-                  <TableHead>Completed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Mobile card layout */}
+              <div className="md:hidden space-y-3">
                 {filtered.map((session) => {
                   const primaryResult = session.session_results?.find(
                     (r) => r.is_primary
@@ -163,63 +154,132 @@ export function LeadsTableFiltered({ sessions, quizzes }: LeadsTableFilteredProp
                   const user = session.user;
 
                   return (
-                    <TableRow key={session.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          {user?.profile_picture_url && (
-                            <img
-                              src={user.profile_picture_url}
-                              alt=""
-                              referrerPolicy="no-referrer"
-                              className="w-8 h-8 rounded-full"
-                            />
-                          )}
-                          <div>
-                            <p className="font-medium">
-                              {user?.name || 'Anonymous'}
+                    <div key={session.id} className="border rounded-lg p-4 space-y-2">
+                      <div className="flex items-center gap-3">
+                        {user?.profile_picture_url && (
+                          <img
+                            src={user.profile_picture_url}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="w-8 h-8 rounded-full shrink-0"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {user?.name || 'Anonymous'}
+                          </p>
+                          {user?.email && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {user.email}
                             </p>
-                            {user?.email && (
-                              <p className="text-sm text-muted-foreground">
-                                {user.email}
-                              </p>
-                            )}
-                          </div>
+                          )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">
                           {session.quiz?.title || 'Unknown Quiz'}
                         </span>
-                      </TableCell>
-                      <TableCell>
                         {primaryResult ? (
                           <Badge variant="secondary">
                             {primaryResult.quiz_result?.title}
                           </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {session.lead_score?.toFixed(1) || '-'}
-                      </TableCell>
-                      <TableCell>
+                        ) : null}
                         {session.is_lead ? (
                           <Badge variant="default">Lead</Badge>
                         ) : (
                           <Badge variant="outline">No</Badge>
                         )}
-                      </TableCell>
-                      <TableCell>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
                         {session.completed_at
                           ? new Date(session.completed_at).toLocaleString()
                           : '-'}
-                      </TableCell>
-                    </TableRow>
+                      </p>
+                    </div>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Desktop table layout */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Quiz</TableHead>
+                      <TableHead>Result</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>Lead</TableHead>
+                      <TableHead>Completed</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((session) => {
+                      const primaryResult = session.session_results?.find(
+                        (r) => r.is_primary
+                      );
+                      const user = session.user;
+
+                      return (
+                        <TableRow key={session.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              {user?.profile_picture_url && (
+                                <img
+                                  src={user.profile_picture_url}
+                                  alt=""
+                                  referrerPolicy="no-referrer"
+                                  className="w-8 h-8 rounded-full"
+                                />
+                              )}
+                              <div>
+                                <p className="font-medium">
+                                  {user?.name || 'Anonymous'}
+                                </p>
+                                {user?.email && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {user.email}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">
+                              {session.quiz?.title || 'Unknown Quiz'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {primaryResult ? (
+                              <Badge variant="secondary">
+                                {primaryResult.quiz_result?.title}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {session.lead_score?.toFixed(1) || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {session.is_lead ? (
+                              <Badge variant="default">Lead</Badge>
+                            ) : (
+                              <Badge variant="outline">No</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {session.completed_at
+                              ? new Date(session.completed_at).toLocaleString()
+                              : '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               No results match the current filters

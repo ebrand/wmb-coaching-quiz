@@ -442,62 +442,9 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer, onReorder
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative select-none"
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-    >
-      {/* SVG overlay for connection lines */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
-        {connections.map((conn) => {
-          const dx = conn.to.x - conn.from.x;
-          const cp = Math.max(Math.abs(dx) * 0.4, 40);
-          const d = `M ${conn.from.x} ${conn.from.y} C ${conn.from.x + cp} ${conn.from.y}, ${conn.to.x - cp} ${conn.to.y}, ${conn.to.x} ${conn.to.y}`;
-          return (
-            <g key={`${conn.answerId}-${conn.resultId}`}>
-              {/* Fat invisible hit area for clicking */}
-              <path
-                d={d}
-                fill="none"
-                stroke="transparent"
-                strokeWidth={16}
-                className="pointer-events-auto cursor-pointer"
-                onClick={() => handleRemoveMapping(conn.answerId, conn.resultId)}
-              />
-              {/* Visible line */}
-              <path
-                d={d}
-                fill="none"
-                stroke={conn.color}
-                strokeWidth={2.5}
-                strokeOpacity={0.8}
-              />
-            </g>
-          );
-        })}
-
-        {/* Dragging line */}
-        {dragLine && (() => {
-          const dx = dragLine.to.x - dragLine.from.x;
-          const cp = Math.max(Math.abs(dx) * 0.4, 40);
-          const d = `M ${dragLine.from.x} ${dragLine.from.y} C ${dragLine.from.x + cp} ${dragLine.from.y}, ${dragLine.to.x - cp} ${dragLine.to.y}, ${dragLine.to.x} ${dragLine.to.y}`;
-          return (
-            <path
-              d={d}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              className="text-muted-foreground"
-            />
-          );
-        })()}
-      </svg>
-
-      {/* Two-column layout */}
-      <div className="grid grid-cols-[1fr_1fr] gap-16" style={{ position: 'relative', zIndex: 2 }}>
-        {/* Left column: Answers (sortable) */}
+    <>
+      {/* Mobile stacked layout */}
+      <div className="md:hidden space-y-4">
         <div className="space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Answers
@@ -516,36 +463,47 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer, onReorder
                 const isSelected = selectedAnswerId === answer.id;
                 const isDraggingWire = dragging?.answerId === answer.id;
                 const mappedColor = weight ? resultColorMap.get(weight.result_id) : undefined;
+                const mappedResult = weight
+                  ? results.find((r) => r.id === weight.result_id)
+                  : null;
 
                 return (
-                  <SortableAnswerRow
-                    key={answer.id}
-                    answer={answer}
-                    mappedColor={mappedColor}
-                    isSelected={isSelected}
-                    isDraggingWire={isDraggingWire}
-                    loading={loading}
-                    weight={weight}
-                    onPointerDown={(e) => handleAnswerPointerDown(answer.id, e)}
-                    onClick={() => handleAnswerClick(answer.id)}
-                    onRemoveMapping={() => weight && handleRemoveMapping(answer.id, weight.result_id)}
-                    onDeleteAnswer={() => onDeleteAnswer(answer.id)}
-                    setRef={setAnswerRef(answer.id)}
-                  />
+                  <div key={answer.id} className="space-y-1">
+                    <SortableAnswerRow
+                      answer={answer}
+                      mappedColor={mappedColor}
+                      isSelected={isSelected}
+                      isDraggingWire={isDraggingWire}
+                      loading={loading}
+                      weight={weight}
+                      onPointerDown={() => {}}
+                      onClick={() => handleAnswerClick(answer.id)}
+                      onRemoveMapping={() => weight && handleRemoveMapping(answer.id, weight.result_id)}
+                      onDeleteAnswer={() => onDeleteAnswer(answer.id)}
+                      setRef={() => {}}
+                    />
+                    {mappedResult && (
+                      <div className="ml-8 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <div
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: mappedColor }}
+                        />
+                        <span className="truncate">{mappedResult.title}</span>
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </SortableContext>
           </DndContext>
         </div>
 
-        {/* Right column: Results */}
         <div className="space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Results
           </h4>
           {results.map((result, index) => {
             const color = getResultColor(index);
-            // Count how many answers map to this result
             const mappedCount = orderedAnswers.filter((a) =>
               a.answer_result_weights.some((w) => w.result_id === result.id)
             ).length;
@@ -553,14 +511,11 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer, onReorder
             return (
               <div
                 key={result.id}
-                ref={setResultRef(result.id)}
                 data-result-id={result.id}
                 className={`border rounded-lg p-2.5 flex items-center gap-2 transition-shadow ${
                   selectedAnswerId
-                    ? 'hover:ring-2 hover:ring-primary hover:shadow-md cursor-pointer'
-                    : dragging
-                      ? 'hover:ring-2 hover:ring-primary hover:shadow-md'
-                      : ''
+                    ? 'ring-2 ring-primary/50 shadow-sm cursor-pointer'
+                    : ''
                 }`}
                 style={{
                   borderLeftWidth: 4,
@@ -586,14 +541,168 @@ export function AnswerResultWiring({ answers, results, onDeleteAnswer, onReorder
             );
           })}
         </div>
+
+        {selectedAnswerId && (
+          <p className="text-xs text-muted-foreground text-center">
+            Tap a result to connect, or tap the answer again to cancel.
+          </p>
+        )}
       </div>
 
-      {/* Instructions hint */}
-      {selectedAnswerId && (
-        <p className="text-xs text-muted-foreground mt-3 text-center">
-          Click a result to connect, or click the answer again to cancel.
-        </p>
-      )}
-    </div>
+      {/* Desktop two-column wiring layout */}
+      <div
+        ref={containerRef}
+        className="relative select-none hidden md:block"
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        {/* SVG overlay for connection lines */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+          {connections.map((conn) => {
+            const dx = conn.to.x - conn.from.x;
+            const cp = Math.max(Math.abs(dx) * 0.4, 40);
+            const d = `M ${conn.from.x} ${conn.from.y} C ${conn.from.x + cp} ${conn.from.y}, ${conn.to.x - cp} ${conn.to.y}, ${conn.to.x} ${conn.to.y}`;
+            return (
+              <g key={`${conn.answerId}-${conn.resultId}`}>
+                {/* Fat invisible hit area for clicking */}
+                <path
+                  d={d}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth={16}
+                  className="pointer-events-auto cursor-pointer"
+                  onClick={() => handleRemoveMapping(conn.answerId, conn.resultId)}
+                />
+                {/* Visible line */}
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={conn.color}
+                  strokeWidth={2.5}
+                  strokeOpacity={0.8}
+                />
+              </g>
+            );
+          })}
+
+          {/* Dragging line */}
+          {dragLine && (() => {
+            const dx = dragLine.to.x - dragLine.from.x;
+            const cp = Math.max(Math.abs(dx) * 0.4, 40);
+            const d = `M ${dragLine.from.x} ${dragLine.from.y} C ${dragLine.from.x + cp} ${dragLine.from.y}, ${dragLine.to.x - cp} ${dragLine.to.y}, ${dragLine.to.x} ${dragLine.to.y}`;
+            return (
+              <path
+                d={d}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeDasharray="6 4"
+                className="text-muted-foreground"
+              />
+            );
+          })()}
+        </svg>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-[1fr_1fr] gap-16" style={{ position: 'relative', zIndex: 2 }}>
+          {/* Left column: Answers (sortable) */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Answers
+            </h4>
+            <DndContext
+              sensors={reorderSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleAnswerDragEnd}
+            >
+              <SortableContext
+                items={orderedAnswers.map((a) => a.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {orderedAnswers.map((answer) => {
+                  const weight = answer.answer_result_weights[0];
+                  const isSelected = selectedAnswerId === answer.id;
+                  const isDraggingWire = dragging?.answerId === answer.id;
+                  const mappedColor = weight ? resultColorMap.get(weight.result_id) : undefined;
+
+                  return (
+                    <SortableAnswerRow
+                      key={answer.id}
+                      answer={answer}
+                      mappedColor={mappedColor}
+                      isSelected={isSelected}
+                      isDraggingWire={isDraggingWire}
+                      loading={loading}
+                      weight={weight}
+                      onPointerDown={(e) => handleAnswerPointerDown(answer.id, e)}
+                      onClick={() => handleAnswerClick(answer.id)}
+                      onRemoveMapping={() => weight && handleRemoveMapping(answer.id, weight.result_id)}
+                      onDeleteAnswer={() => onDeleteAnswer(answer.id)}
+                      setRef={setAnswerRef(answer.id)}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
+          </div>
+
+          {/* Right column: Results */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              Results
+            </h4>
+            {results.map((result, index) => {
+              const color = getResultColor(index);
+              // Count how many answers map to this result
+              const mappedCount = orderedAnswers.filter((a) =>
+                a.answer_result_weights.some((w) => w.result_id === result.id)
+              ).length;
+
+              return (
+                <div
+                  key={result.id}
+                  ref={setResultRef(result.id)}
+                  data-result-id={result.id}
+                  className={`border rounded-lg p-2.5 flex items-center gap-2 transition-shadow ${
+                    selectedAnswerId
+                      ? 'hover:ring-2 hover:ring-primary hover:shadow-md cursor-pointer'
+                      : dragging
+                        ? 'hover:ring-2 hover:ring-primary hover:shadow-md'
+                        : ''
+                  }`}
+                  style={{
+                    borderLeftWidth: 4,
+                    borderLeftColor: color,
+                    backgroundColor: 'white',
+                  }}
+                  onClick={() => handleResultClick(result.id)}
+                >
+                  <span className="flex-1 text-sm font-medium">{truncateText(result.title)}</span>
+                  {mappedCount > 0 && (
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                      style={{
+                        backgroundColor: color,
+                        color: 'white',
+                        opacity: 0.85,
+                      }}
+                    >
+                      {mappedCount}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Instructions hint */}
+        {selectedAnswerId && (
+          <p className="text-xs text-muted-foreground mt-3 text-center">
+            Click a result to connect, or click the answer again to cancel.
+          </p>
+        )}
+      </div>
+    </>
   );
 }

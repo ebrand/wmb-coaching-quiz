@@ -83,25 +83,25 @@ function SortableQuestionCard({
     <Card ref={setNodeRef} style={style}>
       <CardHeader className="py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 flex-1">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             <button
-              className="cursor-grab active:cursor-grabbing touch-none p-1 text-muted-foreground hover:text-foreground"
+              className="cursor-grab active:cursor-grabbing touch-none p-1 text-muted-foreground hover:text-foreground shrink-0"
               {...attributes}
               {...listeners}
             >
               <GripVertical className="w-4 h-4" />
             </button>
             <button
-              className="flex items-center gap-2 text-left flex-1"
+              className="flex items-center gap-2 text-left flex-1 min-w-0"
               onClick={onToggle}
             >
               {isExpanded ? (
-                <ChevronUp className="w-4 h-4" />
+                <ChevronUp className="w-4 h-4 shrink-0" />
               ) : (
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-4 h-4 shrink-0" />
               )}
-              <span className="text-muted-foreground">Q{qIndex + 1}.</span>
-              <span className="font-medium">{question.question_text}</span>
+              <span className="text-muted-foreground shrink-0">Q{qIndex + 1}.</span>
+              <span className="font-medium truncate">{question.question_text}</span>
               {question.image_url && (
                 <ImageIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
               )}

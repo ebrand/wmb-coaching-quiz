@@ -39,11 +39,13 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Force HTTPS in production
-  const proto = request.headers.get('x-forwarded-proto');
-  if (proto === 'http') {
-    const httpsUrl = new URL(request.url);
-    httpsUrl.protocol = 'https:';
-    return NextResponse.redirect(httpsUrl, 301);
+  if (process.env.NODE_ENV === 'production') {
+    const proto = request.headers.get('x-forwarded-proto');
+    if (proto === 'http') {
+      const httpsUrl = new URL(request.url);
+      httpsUrl.protocol = 'https:';
+      return NextResponse.redirect(httpsUrl, 301);
+    }
   }
 
   // Redirect root to admin
