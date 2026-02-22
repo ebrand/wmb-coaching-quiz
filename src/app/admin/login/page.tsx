@@ -27,7 +27,7 @@ function LoginContent() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-neutral-900">Culture Coach Wendy Admin</h1>
           <p className="mt-2 text-sm text-neutral-500">
-            Sign in to manage quizzes
+            Sign in to manage stuff.
           </p>
         </div>
 
