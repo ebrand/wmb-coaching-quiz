@@ -111,6 +111,17 @@ CREATE TABLE session_results (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- App-wide settings (single row, NULL = use environment variable default)
+CREATE TABLE app_settings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  notify_admin BOOLEAN DEFAULT NULL,
+  admin_notification_email TEXT DEFAULT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed with one row
+INSERT INTO app_settings (id) VALUES (uuid_generate_v4());
+
 -- Indexes for performance
 CREATE INDEX idx_quiz_results_quiz_id ON quiz_results(quiz_id);
 CREATE INDEX idx_questions_quiz_id ON questions(quiz_id);
@@ -152,6 +163,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE session_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 
 -- Public read access for published quizzes
 CREATE POLICY "Public can view published quizzes" ON quizzes
@@ -217,6 +229,16 @@ CREATE POLICY "Public can view own session results" ON session_results
 -- Users table - service role manages this
 CREATE POLICY "Service role manages users" ON users
   FOR ALL USING (TRUE);
+
+-- App settings - service role manages this
+CREATE POLICY "Service role manages app_settings" ON app_settings
+  FOR ALL USING (TRUE);
+
+-- Apply updated_at trigger to app_settings
+CREATE TRIGGER update_app_settings_updated_at
+  BEFORE UPDATE ON app_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
 
 -- Service role has full access (for admin operations)
 -- This is handled by using the service_role key in admin API routes

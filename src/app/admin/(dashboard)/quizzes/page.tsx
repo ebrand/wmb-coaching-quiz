@@ -14,25 +14,47 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, BarChart3, ExternalLink } from 'lucide-react';
 import { DeleteQuizButton } from '@/components/admin/delete-quiz-button';
+import { AdminNotificationSettings } from '@/components/admin/admin-notification-settings';
 
 export default async function QuizzesPage() {
   const supabase = createAdminClient();
 
-  const { data: quizzes, error } = await supabase
-    .from('quizzes')
-    .select(`
-      *,
-      quiz_results(count),
-      questions(count)
-    `)
-    .order('created_at', { ascending: false });
+  const [{ data: quizzes, error }, { data: appSettings }] = await Promise.all([
+    supabase
+      .from('quizzes')
+      .select(`
+        *,
+        quiz_results(count),
+        questions(count)
+      `)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('app_settings')
+      .select('*')
+      .limit(1)
+      .single(),
+  ]);
 
   if (error) {
     return <div>Error loading quizzes: {error.message}</div>;
   }
 
+  const defaultEmail = process.env.ADMIN_NOTIFICATION_EMAIL || '';
+  const defaultNotify = process.env.NOTIFY_ADMIN === 'true';
+
+  const notifyAdmin = appSettings?.notify_admin ?? defaultNotify;
+  const adminEmail = appSettings?.admin_notification_email || defaultEmail;
+
   return (
     <div>
+      <div className="mb-6">
+        <AdminNotificationSettings
+          initialNotifyAdmin={notifyAdmin}
+          initialEmail={adminEmail}
+          defaultEmail={defaultEmail}
+        />
+      </div>
+
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Quizzes</h1>
         <Link href="/admin/quizzes/new">

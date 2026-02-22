@@ -67,6 +67,7 @@ export async function sendResultEmail({
 }
 
 interface SendAdminNotificationParams {
+  adminEmail: string;
   userName: string | null;
   userEmail: string | null;
   quizTitle: string;
@@ -75,15 +76,15 @@ interface SendAdminNotificationParams {
 }
 
 export async function sendAdminNotificationEmail({
+  adminEmail,
   userName,
   userEmail,
   quizTitle,
   resultTitle,
   isLead,
 }: SendAdminNotificationParams): Promise<{ success: boolean; error?: string }> {
-  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
   if (!adminEmail) {
-    return { success: false, error: 'ADMIN_NOTIFICATION_EMAIL not configured' };
+    return { success: false, error: 'No admin email configured' };
   }
 
   try {

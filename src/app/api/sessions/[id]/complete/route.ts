@@ -193,19 +193,32 @@ export async function POST(
   }
 
   // Send admin notification email for all completions
+  // Resolve settings: DB overrides > env var defaults
   let adminEmailSent = false;
   if (process.env.RESEND_API_KEY && primaryResult) {
     try {
-      const adminResult = await sendAdminNotificationEmail({
-        userName: user?.name || null,
-        userEmail: user?.email || null,
-        quizTitle: quiz?.title || 'Quiz',
-        resultTitle: primaryResult.title,
-        isLead,
-      });
-      adminEmailSent = adminResult.success;
-      if (!adminResult.success) {
-        console.error('Admin notification failed:', adminResult.error);
+      const { data: appSettings } = await supabase
+        .from('app_settings')
+        .select('notify_admin, admin_notification_email')
+        .limit(1)
+        .single();
+
+      const shouldNotify = appSettings?.notify_admin ?? (process.env.NOTIFY_ADMIN === 'true');
+      const resolvedAdminEmail = appSettings?.admin_notification_email || process.env.ADMIN_NOTIFICATION_EMAIL || '';
+
+      if (shouldNotify && resolvedAdminEmail) {
+        const adminResult = await sendAdminNotificationEmail({
+          adminEmail: resolvedAdminEmail,
+          userName: user?.name || null,
+          userEmail: user?.email || null,
+          quizTitle: quiz?.title || 'Quiz',
+          resultTitle: primaryResult.title,
+          isLead,
+        });
+        adminEmailSent = adminResult.success;
+        if (!adminResult.success) {
+          console.error('Admin notification failed:', adminResult.error);
+        }
       }
     } catch (err) {
       console.error('Error sending admin notification:', err);
