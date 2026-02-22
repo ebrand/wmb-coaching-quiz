@@ -25,7 +25,7 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center bg-neutral-50">
       <div className="w-full max-w-sm space-y-6 p-8 bg-white rounded-lg shadow-md">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-neutral-900">Quiz Admin</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">Culture Coach Wendy Admin</h1>
           <p className="mt-2 text-sm text-neutral-500">
             Sign in to manage quizzes
           </p>
