@@ -25,10 +25,11 @@ import { useState } from 'react';
 interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
+  onInit?: (html: string) => void;
   placeholder?: string;
 }
 
-export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, onInit, placeholder }: RichTextEditorProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,6 +53,9 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
     ],
     content: value,
     immediatelyRender: false,
+    onCreate: ({ editor }) => {
+      onInit?.(editor.getHTML());
+    },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },

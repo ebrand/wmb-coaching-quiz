@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -139,7 +139,16 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
   const [loading, setLoading] = useState(false);
 
   const [questionForm, setQuestionForm] = useState({ question_text: '', image_url: '' });
+  const [savedQuestionForm, setSavedQuestionForm] = useState({ question_text: '', image_url: '' });
   const [uploading, setUploading] = useState(false);
+
+  const isEditDirty = useMemo(() => {
+    if (!editingQuestion) return false;
+    return (
+      questionForm.question_text !== savedQuestionForm.question_text ||
+      questionForm.image_url !== savedQuestionForm.image_url
+    );
+  }, [questionForm, savedQuestionForm, editingQuestion]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync orderedQuestions from props when they change (e.g. after router.refresh)
@@ -414,7 +423,9 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                   onToggle={() => toggleQuestion(question.id)}
                   onEdit={() => {
                     setEditingQuestion(question);
-                    setQuestionForm({ question_text: question.question_text, image_url: question.image_url || '' });
+                    const values = { question_text: question.question_text, image_url: question.image_url || '' };
+                    setQuestionForm(values);
+                    setSavedQuestionForm(values);
                   }}
                   onDelete={() => handleDeleteQuestion(question.id)}
                   editDialog={
@@ -433,7 +444,9 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                           size="sm"
                           onClick={() => {
                             setEditingQuestion(question);
-                            setQuestionForm({ question_text: question.question_text, image_url: question.image_url || '' });
+                            const values = { question_text: question.question_text, image_url: question.image_url || '' };
+                            setQuestionForm(values);
+                            setSavedQuestionForm(values);
                           }}
                         >
                           <Edit className="w-4 h-4" />
@@ -484,7 +497,7 @@ export function QuestionsManager({ quizId, questions, results }: QuestionsManage
                             )}
                           </div>
                           <div className="flex gap-2">
-                            <Button type="submit" disabled={loading || uploading}>Save</Button>
+                            <Button type="submit" disabled={loading || uploading || !isEditDirty}>Save</Button>
                             <Button
                               type="button"
                               variant="outline"

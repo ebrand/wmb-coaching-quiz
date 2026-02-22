@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,34 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
     is_published: quiz.is_published,
     settings: quiz.settings as QuizSettings,
   });
+
+  const [savedFormData, setSavedFormData] = useState({
+    title: quiz.title,
+    description: quiz.description || '',
+    image_url: quiz.image_url || '',
+    slug: quiz.slug,
+    settings: quiz.settings as QuizSettings,
+  });
+
+  const isDirty = useMemo(() => {
+    return (
+      formData.title !== savedFormData.title ||
+      formData.description !== savedFormData.description ||
+      formData.image_url !== savedFormData.image_url ||
+      formData.slug !== savedFormData.slug ||
+      JSON.stringify(formData.settings) !== JSON.stringify(savedFormData.settings)
+    );
+  }, [formData, savedFormData]);
+
+  const markClean = useCallback(() => {
+    setSavedFormData({
+      title: formData.title,
+      description: formData.description,
+      image_url: formData.image_url,
+      slug: formData.slug,
+      settings: formData.settings,
+    });
+  }, [formData]);
 
   const handleImageUpload = async (file: File) => {
     setUploading(true);
@@ -66,8 +94,7 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
     e.target.value = '';
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
     setLoading(true);
 
     try {
@@ -85,6 +112,7 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
         throw new Error(errorData.error || 'Failed to update quiz');
       }
 
+      markClean();
       router.refresh();
     } catch (error) {
       console.error('Error updating quiz:', error);
@@ -124,7 +152,7 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
           <CardTitle>Basic Settings</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
               <Input
@@ -199,10 +227,7 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
               </p>
             </div>
 
-            <Button type="submit" disabled={loading || uploading}>
-              {loading ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
 
@@ -388,9 +413,14 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
                 {formData.is_published ? 'Published' : 'Draft'}
               </Badge>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
-                type="button"
+                onClick={handleSave}
+                disabled={loading || uploading || !isDirty}
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
+              <Button
                 variant={formData.is_published ? 'outline' : 'default'}
                 onClick={togglePublish}
                 disabled={loading}
@@ -399,7 +429,6 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
               </Button>
               {formData.is_published && (
                 <Button
-                  type="button"
                   variant="outline"
                   onClick={() => window.open(`/q/${formData.slug}`, '_blank')}
                 >

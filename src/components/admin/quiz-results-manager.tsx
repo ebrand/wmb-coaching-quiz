@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,29 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
     emoji: '🎉',
     is_lead: false,
   });
+
+  const [savedEditFormData, setSavedEditFormData] = useState({
+    title: '',
+    description: '',
+    image_url: '',
+    email_content: '',
+    show_emoji: true,
+    emoji: '🎉',
+    is_lead: false,
+  });
+
+  const isEditDirty = useMemo(() => {
+    if (!editingResult) return false;
+    return (
+      formData.title !== savedEditFormData.title ||
+      formData.description !== savedEditFormData.description ||
+      formData.image_url !== savedEditFormData.image_url ||
+      formData.email_content !== savedEditFormData.email_content ||
+      formData.show_emoji !== savedEditFormData.show_emoji ||
+      formData.emoji !== savedEditFormData.emoji ||
+      formData.is_lead !== savedEditFormData.is_lead
+    );
+  }, [formData, savedEditFormData, editingResult]);
 
   const resetForm = () => {
     setFormData({ title: '', description: '', image_url: '', email_content: '', show_emoji: true, emoji: '🎉', is_lead: false });
@@ -119,7 +142,7 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
 
   const openEditDialog = (result: QuizResult) => {
     setEditingResult(result);
-    setFormData({
+    const values = {
       title: result.title,
       description: result.description || '',
       image_url: result.image_url || '',
@@ -127,7 +150,9 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
       show_emoji: result.show_emoji ?? true,
       emoji: result.emoji || '🎉',
       is_lead: result.is_lead,
-    });
+    };
+    setFormData(values);
+    setSavedEditFormData(values);
   };
 
   return (
@@ -351,6 +376,7 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                           <RichTextEditor
                             value={formData.description}
                             onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
+                            onInit={(html) => setSavedEditFormData((prev) => ({ ...prev, description: html }))}
                             placeholder="Brief description shown immediately after quiz completion..."
                           />
                         </div>
@@ -363,6 +389,7 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                           <RichTextEditor
                             value={formData.email_content}
                             onChange={(html) => setFormData((prev) => ({ ...prev, email_content: html }))}
+                            onInit={(html) => setSavedEditFormData((prev) => ({ ...prev, email_content: html }))}
                             placeholder="Write your email content here..."
                           />
                           <p className="text-xs text-muted-foreground">
@@ -384,7 +411,7 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                         </div>
 
                         <div className="flex gap-2">
-                          <Button type="submit" disabled={loading}>
+                          <Button type="submit" disabled={loading || !isEditDirty}>
                             {loading ? 'Saving...' : 'Save Changes'}
                           </Button>
                           <Button type="button" variant="outline" onClick={resetForm}>
