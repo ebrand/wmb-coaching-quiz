@@ -238,7 +238,7 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                 className="flex items-center gap-3 p-3 border rounded-lg bg-white"
               >
                 <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="flex items-center gap-2">
                     <p className="font-medium truncate">{result.title}</p>
                     {result.is_lead && (
@@ -255,7 +255,7 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                     )}
                   </div>
                   {result.description && (
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-sm text-muted-foreground line-clamp-1">
                       {result.description}
                     </p>
                   )}

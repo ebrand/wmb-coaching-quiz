@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { sendResultEmail } from '@/lib/email/resend';
+import { sendResultEmail, sendAdminNotificationEmail } from '@/lib/email/resend';
 
 // POST /api/sessions/[id]/complete - Complete quiz and calculate results
 export async function POST(
@@ -192,6 +192,26 @@ export async function POST(
     }
   }
 
+  // Send admin notification email for all completions
+  let adminEmailSent = false;
+  if (process.env.RESEND_API_KEY && primaryResult) {
+    try {
+      const adminResult = await sendAdminNotificationEmail({
+        userName: user?.name || null,
+        userEmail: user?.email || null,
+        quizTitle: quiz?.title || 'Quiz',
+        resultTitle: primaryResult.title,
+        isLead,
+      });
+      adminEmailSent = adminResult.success;
+      if (!adminResult.success) {
+        console.error('Admin notification failed:', adminResult.error);
+      }
+    } catch (err) {
+      console.error('Error sending admin notification:', err);
+    }
+  }
+
   return NextResponse.json({
     session,
     resultVotes,
@@ -199,5 +219,6 @@ export async function POST(
     isLead,
     emailSent,
     emailError,
+    adminEmailSent,
   });
 }

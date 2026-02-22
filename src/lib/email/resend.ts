@@ -66,6 +66,79 @@ export async function sendResultEmail({
   }
 }
 
+interface SendAdminNotificationParams {
+  userName: string | null;
+  userEmail: string | null;
+  quizTitle: string;
+  resultTitle: string;
+  isLead: boolean;
+}
+
+export async function sendAdminNotificationEmail({
+  userName,
+  userEmail,
+  quizTitle,
+  resultTitle,
+  isLead,
+}: SendAdminNotificationParams): Promise<{ success: boolean; error?: string }> {
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!adminEmail) {
+    return { success: false, error: 'ADMIN_NOTIFICATION_EMAIL not configured' };
+  }
+
+  try {
+    const resend = getResendClient();
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@resend.dev';
+    const fromName = process.env.RESEND_FROM_NAME || 'Quiz Results';
+
+    const leadBadge = isLead ? ' [LEAD]' : '';
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .lead { background: #fef3c7; color: #92400e; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    td { padding: 8px 12px; border: 1px solid #e5e7eb; }
+    td:first-child { font-weight: 600; background: #f9fafb; width: 120px; }
+  </style>
+</head>
+<body>
+  <h2>Quiz Completion${leadBadge}</h2>
+  <table>
+    <tr><td>Quiz</td><td>${quizTitle}</td></tr>
+    <tr><td>Result</td><td>${resultTitle}${isLead ? ' <span class="badge lead">Lead</span>' : ''}</td></tr>
+    <tr><td>Name</td><td>${userName || 'Not provided'}</td></tr>
+    <tr><td>Email</td><td>${userEmail || 'Not provided'}</td></tr>
+  </table>
+</body>
+</html>`;
+
+    const { error } = await resend.emails.send({
+      from: `${fromName} <${fromEmail}>`,
+      to: [adminEmail],
+      subject: `${leadBadge ? '[LEAD] ' : ''}Quiz Completed: ${userName || 'Anonymous'} - ${resultTitle}`,
+      html,
+    });
+
+    if (error) {
+      console.error('Admin notification error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send admin notification:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
 function buildEmailHtml({
   userName,
   quizTitle,
