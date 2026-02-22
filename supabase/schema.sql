@@ -30,6 +30,8 @@ CREATE TABLE quiz_results (
   description TEXT,
   image_url TEXT,
   email_content TEXT,  -- Rich HTML content for email body
+  show_emoji BOOLEAN DEFAULT TRUE,  -- Show emoji on results page
+  emoji TEXT DEFAULT '🎉',          -- Emoji displayed on results page
   is_lead BOOLEAN DEFAULT FALSE,  -- Flag to mark this result as a lead
   min_score DECIMAL(10,2) DEFAULT 0,  -- Minimum score threshold to get this result
   display_order INT DEFAULT 0,

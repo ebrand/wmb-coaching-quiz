@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -36,11 +35,13 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
     description: '',
     image_url: '',
     email_content: '',
+    show_emoji: true,
+    emoji: '🎉',
     is_lead: false,
   });
 
   const resetForm = () => {
-    setFormData({ title: '', description: '', image_url: '', email_content: '', is_lead: false });
+    setFormData({ title: '', description: '', image_url: '', email_content: '', show_emoji: true, emoji: '🎉', is_lead: false });
     setEditingResult(null);
     setIsCreating(false);
   };
@@ -123,6 +124,8 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
       description: result.description || '',
       image_url: result.image_url || '',
       email_content: result.email_content || '',
+      show_emoji: result.show_emoji ?? true,
+      emoji: result.emoji || '🎉',
       is_lead: result.is_lead,
     });
   };
@@ -151,24 +154,45 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="create-result-title">Title</Label>
+                <Label htmlFor="create-result-title">Title <span className="text-muted-foreground font-normal">(optional)</span></Label>
                 <Input
                   id="create-result-title"
                   value={formData.title}
                   onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                   placeholder="e.g., You're a Natural Leader"
-                  required
                 />
               </div>
 
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="create-show-emoji"
+                    checked={formData.show_emoji}
+                    onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, show_emoji: checked === true }))}
+                  />
+                  <Label htmlFor="create-show-emoji" className="text-sm cursor-pointer">
+                    Show emoji on results page
+                  </Label>
+                </div>
+                {formData.show_emoji && (
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="create-emoji" className="text-sm">Emoji</Label>
+                    <Input
+                      id="create-emoji"
+                      value={formData.emoji}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, emoji: e.target.value }))}
+                      className="w-16 text-center text-lg"
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="create-result-description">Description (shown on results page)</Label>
-                <Textarea
-                  id="create-result-description"
+                <Label>Description (shown on results page)</Label>
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                  onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
                   placeholder="Brief description shown immediately after quiz completion..."
-                  rows={3}
                 />
               </div>
 
@@ -256,7 +280,7 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                   </div>
                   {result.description && (
                     <p className="text-sm text-muted-foreground line-clamp-1">
-                      {result.description}
+                      {result.description.replace(/<[^>]*>/g, '')}
                     </p>
                   )}
                 </div>
@@ -279,24 +303,45 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                       </DialogHeader>
                       <form onSubmit={handleUpdate} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="edit-result-title">Title</Label>
+                          <Label htmlFor="edit-result-title">Title <span className="text-muted-foreground font-normal">(optional)</span></Label>
                           <Input
                             id="edit-result-title"
                             value={formData.title}
                             onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                             placeholder="e.g., You're a Natural Leader"
-                            required
                           />
                         </div>
 
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="edit-show-emoji"
+                              checked={formData.show_emoji}
+                              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, show_emoji: checked === true }))}
+                            />
+                            <Label htmlFor="edit-show-emoji" className="text-sm cursor-pointer">
+                              Show emoji on results page
+                            </Label>
+                          </div>
+                          {formData.show_emoji && (
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="edit-emoji" className="text-sm">Emoji</Label>
+                              <Input
+                                id="edit-emoji"
+                                value={formData.emoji}
+                                onChange={(e) => setFormData((prev) => ({ ...prev, emoji: e.target.value }))}
+                                className="w-16 text-center text-lg"
+                              />
+                            </div>
+                          )}
+                        </div>
+
                         <div className="space-y-2">
-                          <Label htmlFor="edit-result-description">Description (shown on results page)</Label>
-                          <Textarea
-                            id="edit-result-description"
+                          <Label>Description (shown on results page)</Label>
+                          <RichTextEditor
                             value={formData.description}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                            onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
                             placeholder="Brief description shown immediately after quiz completion..."
-                            rows={3}
                           />
                         </div>
 

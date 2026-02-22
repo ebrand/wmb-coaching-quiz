@@ -11,9 +11,11 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
     .from('quiz_results')
     .insert({
       quiz_id: body.quiz_id,
-      title: body.title,
+      title: body.title || '',
       description: body.description || null,
       image_url: body.image_url || null,
+      show_emoji: body.show_emoji ?? true,
+      emoji: body.emoji || '🎉',
       display_order: body.display_order || 0,
     })
     .select()

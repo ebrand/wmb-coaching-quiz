@@ -27,6 +27,8 @@ export interface QuizResult {
   description: string | null;
   image_url: string | null;
   email_content: string | null;
+  show_emoji: boolean;
+  emoji: string;
   is_lead: boolean;
   min_score: number;
   display_order: number;

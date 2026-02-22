@@ -466,16 +466,23 @@ function ResultScreen({ result, buttonStyle, primaryColor }: ResultScreenProps) 
 
   return (
     <div className="text-center space-y-6">
-      <div className="text-4xl">🎉</div>
-      <h2 className="text-2xl font-bold">{result.title}</h2>
-      {result.description && (
-        <p className="text-muted-foreground">{result.description}</p>
+      {(result.show_emoji ?? true) && (
+        <div className="text-4xl">{result.emoji || '🎉'}</div>
+      )}
+      {result.title && (
+        <h2 className="text-2xl font-bold">{result.title}</h2>
       )}
       {result.image_url && (
         <img
           src={result.image_url}
           alt={result.title}
-          className="mx-auto max-w-sm rounded-lg"
+          className="w-full rounded-lg"
+        />
+      )}
+      {result.description && (
+        <div
+          className="text-left text-muted-foreground rich-text-content"
+          dangerouslySetInnerHTML={{ __html: result.description }}
         />
       )}
       <Button
