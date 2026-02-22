@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import type { Quiz, Question, Answer, QuizResult, QuizSettings } from '@/types/database';
 
 interface QuestionWithAnswers extends Question {
@@ -141,16 +143,17 @@ export function QuizContainer({ quiz }: QuizContainerProps) {
   };
 
   const buttonStyle = settings.buttonStyle === 'square' ? 'rounded-none' : 'rounded-md';
+  const logoHeightClass = { small: 'h-8', medium: 'h-16', large: 'h-24' }[settings.logoSize || 'medium'];
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4"
+      className="min-h-screen flex items-start justify-center p-4"
       style={{ backgroundColor: settings.backgroundColor }}
     >
       <Card className="w-full max-w-2xl">
         {settings.logoUrl && (
           <div className="p-4 border-b flex justify-center">
-            <img src={settings.logoUrl} alt="Logo" className="h-12 object-contain" />
+            <img src={settings.logoUrl} alt="Logo" className={`${logoHeightClass} object-contain`} />
           </div>
         )}
 
@@ -162,6 +165,7 @@ export function QuizContainer({ quiz }: QuizContainerProps) {
               loading={loading}
               buttonStyle={buttonStyle}
               primaryColor={settings.primaryColor}
+              startButtonText={settings.startButtonText}
             />
           )}
 
@@ -183,8 +187,7 @@ export function QuizContainer({ quiz }: QuizContainerProps) {
           )}
 
           {state === 'auth' && (
-            <AuthScreen
-              sessionId={sessionId}
+            <LeadCaptureForm
               onComplete={completeQuiz}
               loading={loading}
               buttonStyle={buttonStyle}
@@ -213,9 +216,10 @@ interface IntroScreenProps {
   loading: boolean;
   buttonStyle: string;
   primaryColor: string;
+  startButtonText?: string;
 }
 
-function IntroScreen({ quiz, onStart, loading, buttonStyle, primaryColor }: IntroScreenProps) {
+function IntroScreen({ quiz, onStart, loading, buttonStyle, primaryColor, startButtonText }: IntroScreenProps) {
   return (
     <div className="text-center space-y-6">
       <h1 className="text-2xl font-bold">{quiz.title}</h1>
@@ -238,7 +242,7 @@ function IntroScreen({ quiz, onStart, loading, buttonStyle, primaryColor }: Intr
         className={buttonStyle}
         style={{ backgroundColor: primaryColor }}
       >
-        {loading ? 'Starting...' : 'Start Quiz'}
+        {loading ? 'Starting...' : (startButtonText || 'Start Quiz')}
       </Button>
     </div>
   );
@@ -335,69 +339,108 @@ function QuestionScreen({
   );
 }
 
-interface AuthScreenProps {
-  sessionId: string | null;
+interface LeadCaptureFormProps {
   onComplete: (userId?: string) => void;
   loading: boolean;
   buttonStyle: string;
   primaryColor: string;
 }
 
-function AuthScreen({ sessionId, onComplete, loading, buttonStyle, primaryColor }: AuthScreenProps) {
+function LeadCaptureForm({ onComplete, loading, buttonStyle, primaryColor }: LeadCaptureFormProps) {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [showSkip, setShowSkip] = useState(false);
 
   useEffect(() => {
-    // Show skip option after 3 seconds
     const timer = setTimeout(() => setShowSkip(true), 3000);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleGoogleAuth = () => {
-    // Store session_id in localStorage before OAuth redirect
-    // (Stytch doesn't allow custom query params in redirect URLs)
-    if (sessionId) {
-      localStorage.setItem('quiz_session_id', sessionId);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const response = await fetch('/api/users/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName, lastName, email }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save info');
+
+      const { user_id } = await response.json();
+      onComplete(user_id);
+    } catch (error) {
+      console.error('Error saving lead info:', error);
+      alert('Failed to save your info. Please try again.');
+      setSubmitting(false);
     }
-
-    // Build the OAuth URL for Google via Stytch
-    const publicToken = process.env.NEXT_PUBLIC_STYTCH_PUBLIC_TOKEN;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'https://wmb-coaching-quiz-production.up.railway.app');
-    const callbackUrl = `${appUrl}/auth-complete`;
-
-    // Use test.stytch.com for test tokens, api.stytch.com for live tokens
-    const isTestEnv = publicToken?.includes('-test-');
-    const stytchBaseUrl = isTestEnv ? 'https://test.stytch.com' : 'https://api.stytch.com';
-
-    // Stytch OAuth start URL
-    const oauthUrl = `${stytchBaseUrl}/v1/public/oauth/google/start?public_token=${publicToken}&login_redirect_url=${encodeURIComponent(callbackUrl)}&signup_redirect_url=${encodeURIComponent(callbackUrl)}`;
-
-    // Redirect to Stytch OAuth
-    window.location.href = oauthUrl;
   };
 
   return (
-    <div className="text-center space-y-6">
-      <h2 className="text-xl font-bold">One more step!</h2>
-      <p className="text-muted-foreground">
-        Sign in with Google to see your personalized results
-      </p>
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-xl font-bold">Almost there!</h2>
+        <p className="text-muted-foreground mt-2">
+          Enter your info to see your results and receive them by email
+        </p>
+      </div>
 
-      <Button
-        onClick={handleGoogleAuth}
-        disabled={loading}
-        className={buttonStyle}
-        style={{ backgroundColor: primaryColor }}
-      >
-        {loading ? 'Processing...' : 'Continue with Google'}
-      </Button>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="firstName">First Name</Label>
+            <Input
+              id="firstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="lastName">Last Name</Label>
+            <Input
+              id="lastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div className="text-center">
+          <Button
+            type="submit"
+            disabled={loading || submitting}
+            className={buttonStyle}
+            style={{ backgroundColor: primaryColor }}
+          >
+            {loading || submitting ? 'Processing...' : 'See My Results'}
+          </Button>
+        </div>
+      </form>
 
       {showSkip && (
-        <button
-          onClick={() => onComplete()}
-          className="text-sm text-muted-foreground hover:text-foreground underline"
-        >
-          Skip for now
-        </button>
+        <div className="text-center">
+          <button
+            onClick={() => onComplete()}
+            className="text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            Skip for now
+          </button>
+        </div>
       )}
     </div>
   );

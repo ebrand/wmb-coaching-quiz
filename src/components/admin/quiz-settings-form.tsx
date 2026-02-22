@@ -327,6 +327,46 @@ export function QuizSettingsForm({ quiz }: QuizSettingsFormProps) {
                 placeholder="https://..."
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="logoSize">Logo Size</Label>
+              <Select
+                value={formData.settings.logoSize || 'medium'}
+                onValueChange={(value: 'small' | 'medium' | 'large') =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    settings: { ...prev.settings, logoSize: value },
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="large">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="startButtonText">Start Button Text</Label>
+              <Input
+                id="startButtonText"
+                value={formData.settings.startButtonText || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    settings: { ...prev.settings, startButtonText: e.target.value || undefined },
+                  }))
+                }
+                placeholder="Start Quiz"
+              />
+              <p className="text-sm text-muted-foreground">
+                Customize the text on the start button (defaults to &ldquo;Start Quiz&rdquo;)
+              </p>
+            </div>
           </CardContent>
         </Card>
 
