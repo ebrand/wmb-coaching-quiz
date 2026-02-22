@@ -153,16 +153,6 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
               <DialogTitle>Add New Result</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="create-result-title">Title <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Input
-                  id="create-result-title"
-                  value={formData.title}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g., You're a Natural Leader"
-                />
-              </div>
-
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -188,11 +178,12 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
               </div>
 
               <div className="space-y-2">
-                <Label>Description (shown on results page)</Label>
-                <RichTextEditor
-                  value={formData.description}
-                  onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
-                  placeholder="Brief description shown immediately after quiz completion..."
+                <Label htmlFor="create-result-title">Title <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input
+                  id="create-result-title"
+                  value={formData.title}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g., You're a Natural Leader"
                 />
               </div>
 
@@ -203,6 +194,15 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                   value={formData.image_url}
                   onChange={(e) => setFormData((prev) => ({ ...prev, image_url: e.target.value }))}
                   placeholder="https://..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Description (shown on results page)</Label>
+                <RichTextEditor
+                  value={formData.description}
+                  onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
+                  placeholder="Brief description shown immediately after quiz completion..."
                 />
               </div>
 
@@ -302,16 +302,6 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                         <DialogTitle>Edit Result</DialogTitle>
                       </DialogHeader>
                       <form onSubmit={handleUpdate} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-result-title">Title <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                          <Input
-                            id="edit-result-title"
-                            value={formData.title}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                            placeholder="e.g., You're a Natural Leader"
-                          />
-                        </div>
-
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
                             <Checkbox
@@ -337,11 +327,12 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Description (shown on results page)</Label>
-                          <RichTextEditor
-                            value={formData.description}
-                            onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
-                            placeholder="Brief description shown immediately after quiz completion..."
+                          <Label htmlFor="edit-result-title">Title <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                          <Input
+                            id="edit-result-title"
+                            value={formData.title}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                            placeholder="e.g., You're a Natural Leader"
                           />
                         </div>
 
@@ -352,6 +343,15 @@ export function QuizResultsManager({ quizId, results }: QuizResultsManagerProps)
                             value={formData.image_url}
                             onChange={(e) => setFormData((prev) => ({ ...prev, image_url: e.target.value }))}
                             placeholder="https://..."
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Description (shown on results page)</Label>
+                          <RichTextEditor
+                            value={formData.description}
+                            onChange={(html) => setFormData((prev) => ({ ...prev, description: html }))}
+                            placeholder="Brief description shown immediately after quiz completion..."
                           />
                         </div>
 
