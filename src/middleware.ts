@@ -9,6 +9,7 @@ const PUBLIC_API_PREFIXES = [
   '/api/sessions',
   '/api/auth',
   '/api/admin/auth',
+  '/api/users/lead',
 ];
 
 function isPublicRoute(pathname: string): boolean {
