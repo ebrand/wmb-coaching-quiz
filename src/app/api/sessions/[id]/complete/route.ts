@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendResultEmail, sendAdminNotificationEmail } from '@/lib/email/resend';
+import { submitFormEntry } from '@/lib/kajabi/client';
 
 // POST /api/sessions/[id]/complete - Complete quiz and calculate results
 export async function POST(
@@ -225,6 +226,27 @@ export async function POST(
     }
   }
 
+  // Submit to Kajabi form if credentials are configured and user has email
+  let kajabiSubmitted = false;
+  const kajabiFormId = process.env.KAJABI_FORM_ID;
+  if (process.env.KAJABI_CLIENT_ID && process.env.KAJABI_CLIENT_SECRET && kajabiFormId && user?.email) {
+    try {
+      const kajabiResult = await submitFormEntry({
+        formId: kajabiFormId,
+        name: user.name || '',
+        email: user.email,
+      });
+      kajabiSubmitted = kajabiResult.success;
+      if (!kajabiResult.success) {
+        console.error('Kajabi form submission failed:', kajabiResult.error);
+      } else {
+        console.log('Kajabi form submission successful for:', user.email);
+      }
+    } catch (err) {
+      console.error('Error submitting to Kajabi:', err);
+    }
+  }
+
   return NextResponse.json({
     session,
     resultVotes,
@@ -233,5 +255,6 @@ export async function POST(
     emailSent,
     emailError,
     adminEmailSent,
+    kajabiSubmitted,
   });
 }
