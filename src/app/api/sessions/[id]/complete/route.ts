@@ -229,6 +229,12 @@ export async function POST(
   // Submit to Kajabi form if credentials are configured and user has email
   let kajabiSubmitted = false;
   const kajabiFormId = process.env.KAJABI_FORM_ID;
+  console.log('Kajabi check:', {
+    hasClientId: !!process.env.KAJABI_CLIENT_ID,
+    hasClientSecret: !!process.env.KAJABI_CLIENT_SECRET,
+    formId: kajabiFormId || 'NOT SET',
+    userEmail: user?.email || 'none',
+  });
   if (process.env.KAJABI_CLIENT_ID && process.env.KAJABI_CLIENT_SECRET && kajabiFormId && user?.email) {
     try {
       const kajabiResult = await submitFormEntry({
