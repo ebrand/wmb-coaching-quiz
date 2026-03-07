@@ -140,6 +140,47 @@ export async function sendAdminNotificationEmail({
   }
 }
 
+interface SendZapierNotificationParams {
+  zapierEmail: string;
+  userFirstName: string;
+  userLastName: string;
+  userEmail: string;
+}
+
+export async function sendZapierNotificationEmail({
+  zapierEmail,
+  userFirstName,
+  userLastName,
+  userEmail,
+}: SendZapierNotificationParams): Promise<{ success: boolean; error?: string }> {
+  try {
+    const resend = getResendClient();
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@resend.dev';
+    const fromName = process.env.RESEND_FROM_NAME || 'Quiz Results';
+
+    const { error } = await resend.emails.send({
+      from: `${fromName} <${fromEmail}>`,
+      to: [zapierEmail],
+      subject: userFirstName,
+      replyTo: userEmail,
+      html: `<html><body>${userLastName}</body></html>`,
+    });
+
+    if (error) {
+      console.error('Zapier notification email error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send Zapier notification email:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
 function buildEmailHtml({
   userName,
   quizTitle,

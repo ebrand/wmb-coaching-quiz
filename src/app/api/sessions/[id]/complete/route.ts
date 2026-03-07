@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { sendResultEmail, sendAdminNotificationEmail } from '@/lib/email/resend';
+import { sendResultEmail, sendAdminNotificationEmail, sendZapierNotificationEmail } from '@/lib/email/resend';
 import { submitToZapier } from '@/lib/kajabi/client';
 
 // POST /api/sessions/[id]/complete - Complete quiz and calculate results
@@ -226,6 +226,32 @@ export async function POST(
     }
   }
 
+  // Send Zapier notification email
+  let zapierEmailSent = false;
+  const zapierNotificationEmail = process.env.ZAPIER_NOTIFICATION_EMAIL;
+  if (process.env.RESEND_API_KEY && zapierNotificationEmail && user?.email && user?.name) {
+    try {
+      const nameParts = user.name.trim().split(/\s+/);
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const zapierEmailResult = await sendZapierNotificationEmail({
+        zapierEmail: zapierNotificationEmail,
+        userFirstName: firstName,
+        userLastName: lastName,
+        userEmail: user.email,
+      });
+      zapierEmailSent = zapierEmailResult.success;
+      if (!zapierEmailResult.success) {
+        console.error('Zapier notification email failed:', zapierEmailResult.error);
+      } else {
+        console.log('Zapier notification email sent for:', user.email);
+      }
+    } catch (err) {
+      console.error('Error sending Zapier notification email:', err);
+    }
+  }
+
   // Submit to Zapier webhook (routes to Kajabi via Zap)
   let kajabiSubmitted = false;
   if (process.env.ZAPIER_WEBHOOK_URL && user?.email) {
@@ -253,6 +279,7 @@ export async function POST(
     emailSent,
     emailError,
     adminEmailSent,
+    zapierEmailSent,
     kajabiSubmitted,
   });
 }
