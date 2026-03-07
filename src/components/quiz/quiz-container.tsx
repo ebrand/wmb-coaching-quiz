@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -200,7 +200,6 @@ export function QuizContainer({ quiz }: QuizContainerProps) {
               result={result.primaryResult}
               buttonStyle={buttonStyle}
               primaryColor={settings.primaryColor}
-              kajabiFormUrl={process.env.NEXT_PUBLIC_KAJABI_FORM_URL}
             />
           )}
         </CardContent>
@@ -451,23 +450,9 @@ interface ResultScreenProps {
   result: QuizResult | null;
   buttonStyle: string;
   primaryColor: string;
-  kajabiFormUrl?: string;
 }
 
-function ResultScreen({ result, buttonStyle, primaryColor, kajabiFormUrl }: ResultScreenProps) {
-  const kajabiRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!kajabiFormUrl || !kajabiRef.current) return;
-    const script = document.createElement('script');
-    script.src = kajabiFormUrl;
-    script.async = true;
-    kajabiRef.current.appendChild(script);
-    return () => {
-      script.remove();
-    };
-  }, [kajabiFormUrl]);
-
+function ResultScreen({ result, buttonStyle, primaryColor }: ResultScreenProps) {
   if (!result) {
     return (
       <div className="text-center space-y-4">
@@ -499,9 +484,6 @@ function ResultScreen({ result, buttonStyle, primaryColor, kajabiFormUrl }: Resu
           className="text-left text-muted-foreground rich-text-content"
           dangerouslySetInnerHTML={{ __html: result.description }}
         />
-      )}
-      {kajabiFormUrl && (
-        <div ref={kajabiRef} className="w-full" />
       )}
       <Button
         onClick={() => window.location.reload()}
