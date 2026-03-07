@@ -226,11 +226,12 @@ export async function POST(
     }
   }
 
-  // Send Zapier notification email
+  // Send Zapier notification email (delay to avoid Resend 2 req/s rate limit)
   let zapierEmailSent = false;
   const zapierNotificationEmail = process.env.ZAPIER_NOTIFICATION_EMAIL;
   if (process.env.RESEND_API_KEY && zapierNotificationEmail && user?.email && user?.name) {
     try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const nameParts = user.name.trim().split(/\s+/);
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ') || '';
