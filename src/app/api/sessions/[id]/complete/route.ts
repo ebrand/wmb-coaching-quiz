@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sendResultEmail, sendAdminNotificationEmail, sendZapierNotificationEmail } from '@/lib/email/resend';
-import { submitToZapier } from '@/lib/kajabi/client';
+
 
 // POST /api/sessions/[id]/complete - Complete quiz and calculate results
 export async function POST(
@@ -252,25 +252,6 @@ export async function POST(
     }
   }
 
-  // Submit to Zapier webhook (routes to Kajabi via Zap)
-  let kajabiSubmitted = false;
-  if (process.env.ZAPIER_WEBHOOK_URL && user?.email) {
-    try {
-      const zapierResult = await submitToZapier({
-        name: user.name || '',
-        email: user.email,
-      });
-      kajabiSubmitted = zapierResult.success;
-      if (!zapierResult.success) {
-        console.error('Zapier webhook failed:', zapierResult.error);
-      } else {
-        console.log('Zapier webhook successful for:', user.email);
-      }
-    } catch (err) {
-      console.error('Error submitting to Zapier:', err);
-    }
-  }
-
   return NextResponse.json({
     session,
     resultVotes,
@@ -280,6 +261,5 @@ export async function POST(
     emailError,
     adminEmailSent,
     zapierEmailSent,
-    kajabiSubmitted,
   });
 }
